@@ -1,0 +1,45 @@
+#!/bin/bash
+PREFIX="$(realpath -m "${PREFIX:-/usr/local}")"
+DESTDIR="$(realpath -m "${DESTDIR:-/}")"
+LIBDIR="${LIBDIR:-lib}"
+BINDIR="${BINDIR:-bin}"
+
+# Join two path components.
+# If the second component is an absolute path, it is returned unmodified.
+join_paths() {
+	if [[ -z $2 ]]; then
+		printf "%s\n" "$1";
+	elif [[ -z $1 || "${2:0:1}" == "/" ]]; then
+		printf "%s\n" "$2";
+	elif [[ ${1: -1} == "/" ]]; then
+		printf "%s%s\n" "$1" "$2";
+	else
+		printf "%s/%s\n" "$1" "$2";
+	fi
+}
+
+LIBDIR_ABS="$(join_paths "$PREFIX" "$LIBDIR")"
+BINDIR_ABS="$(join_paths "$PREFIX" "$BINDIR")"
+
+INSTALL_LIBDIR="$(realpath -m "$DESTDIR$LIBDIR_ABS")"
+INSTALL_BINDIR="$(realpath -m "$DESTDIR$BINDIR_ABS")"
+
+logexec() {
+	printf "%s " "$@" >&2
+	printf "\n" >&2
+	"$@"
+}
+
+if (($VERBOSE)); then
+	printf "PREFIX:         %s\n" "$PREFIX"
+	printf "DESTDIR:        %s\n" "$DESTDIR"
+	printf "LIBDIR:         %s\n" "$LIBDIR"
+	printf "BINDIR:         %s\n" "$BINDIR"
+	printf "LIBDIR_ABS:     %s\n" "$LIBDIR_ABS"
+	printf "BINDIR_ABS:     %s\n" "$BINDIR_ABS"
+	printf "INSTALL_LIBDIR: %s\n" "$INSTALL_LIBDIR"
+	printf "INSTALL_BINDIR: %s\n" "$INSTALL_BINDIR"
+fi;
+
+logexec install -m 755 -Dt "$INSTALL_BINDIR" "target/release/curl-inject-opt"
+logexec install -m 755 -Dt "$INSTALL_LIBDIR" "target/release/libcurl_inject_opt_preload.so"
