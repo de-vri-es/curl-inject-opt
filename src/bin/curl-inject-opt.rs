@@ -1,5 +1,7 @@
 use structopt::StructOpt;
 
+include!(concat!(env!("OUT_DIR"), "/config.rs"));
+
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(about = "Set curl options for a subcommand.", author = "")]
 #[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
