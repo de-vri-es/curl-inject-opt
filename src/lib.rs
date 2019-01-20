@@ -36,17 +36,17 @@ struct Init {
 
 
 impl Init {
-	fn init() -> Self {
-		Self {
-			next_curl_easy_init       : load_next_fn!(curl_easy_init() -> *mut CURL).unwrap(),
-			next_curl_easy_setopt_str : load_next_fn!(curl_easy_setopt(handle: *mut CURL, option: CURLoption, value: *const u8) -> CURLcode).unwrap(),
+	fn init() -> Result<Self, String> {
+		Ok(Self {
+			next_curl_easy_init       : load_next_fn!(curl_easy_init() -> *mut CURL)?,
+			next_curl_easy_setopt_str : load_next_fn!(curl_easy_setopt(handle: *mut CURL, option: CURLoption, value: *const u8) -> CURLcode)?,
 			cert_path                 : std::env::var_os("CURL_INJECT_OPT_SSLCERT"),
 			key_path                  : std::env::var_os("CURL_INJECT_OPT_SSLKEY"),
-		}
+		})
 	}
 }
 
-static mut _INIT : Option<Init> = None;
+static mut _INIT : Option<Result<Init, String>> = None;
 
 extern "C" fn initialize() {
 	unsafe {
@@ -64,7 +64,11 @@ pub static init_curl_inject: extern "C" fn() = {
 };
 
 pub extern "C" fn curl_easy_init() -> *mut CURL {
-	let init = unsafe { _INIT.as_ref().unwrap() };
+	let init = match unsafe { _INIT.as_ref().unwrap() } {
+		Err(string) => panic!("{}", string),
+		Ok(init)    => init,
+	};
+
 
 	// Delegate to the real handler.
 	let handle = (init.next_curl_easy_init)();

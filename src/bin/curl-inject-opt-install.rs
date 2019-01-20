@@ -65,10 +65,9 @@ fn install() -> Result<(), String> {
 	let args = Args::from_args();
 
 	let cwd     = std::env::current_dir().map_err(|e| format!("Failed to get current working directory: {}", e))?;
-	let prefix  = cwd.join(PREFIX);
 	let destdir = cwd.join(args.destdir);
-	let bindir  = concat_paths(&destdir, &prefix.join(BINDIR));
-	let libdir  = concat_paths(&destdir, &prefix.join(LIBDIR));
+	let bindir  = concat_paths(&destdir, BINDIR);
+	let libdir  = concat_paths(&destdir, LIBDIR);
 
 	std::fs::create_dir_all(&bindir).map_err(|e| format!("Failed to create directory: {}: {}", bindir.display(), e))?;
 	std::fs::create_dir_all(&libdir).map_err(|e| format!("Failed to create directory: {}: {}", bindir.display(), e))?;
