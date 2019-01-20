@@ -7,7 +7,7 @@ build   = "build.rs"
 
 [lib]
 name       = "curl_inject_opt_preload"
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 
 [dependencies]
 libc      = "*"

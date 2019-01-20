@@ -7,6 +7,9 @@ include!(concat!(env!("OUT_DIR"), "/config.rs"));
 #[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
 #[structopt(raw(setting = "structopt::clap::AppSettings::TrailingVarArg"))]
 struct Args {
+	#[structopt(long = "debug")]
+	debug: bool,
+
 	#[structopt(long = "client-cert")]
 	client_cert: Option<String>,
 
@@ -35,11 +38,13 @@ fn main() {
 		preloads.push(preload_lib.as_os_str());
 		preloads.push(":");
 		preloads.push(old_preload);
-		dbg!(&preloads);
 		command = command.env("LD_PRELOAD", preloads);
 	} else {
-		dbg!(&preload_lib);
 		command = command.env("LD_PRELOAD", preload_lib.as_os_str());
+	}
+
+	if args.debug {
+		command = command.env("CURL_INJECT_OPT_DEBUG", "1");
 	}
 
 	if let Some(value) = args.client_cert {
