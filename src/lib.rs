@@ -28,8 +28,7 @@ macro_rules! load_next_fn {
 }
 
 struct CurlInjectOpt {
-	next_curl_easy_init       : extern "C" fn() -> *mut CURL,
-	next_curl_easy_reset      : extern "C" fn(handle: *mut CURL),
+	next_curl_easy_perform    : extern "C" fn(handle: *mut CURL) -> CURLcode,
 	next_curl_easy_setopt_str : extern "C" fn(handle: *mut CURL, option: CURLoption, value: *const std::ffi::CStr) -> CURLcode,
 	debug                     : bool,
 	cert_path                 : Option<std::ffi::CString>,
@@ -50,8 +49,7 @@ fn get_env_nul(name: impl AsRef<std::ffi::OsStr>) -> Option<std::ffi::CString> {
 
 impl CurlInjectOpt {
 	fn init() -> Result<Self, String> {
-		let next_curl_easy_init       = load_next_fn!(curl_easy_init() -> *mut CURL);
-		let next_curl_easy_reset      = load_next_fn!(curl_easy_reset(handle: *mut CURL));
+		let next_curl_easy_perform    = load_next_fn!(curl_easy_perform(handle: *mut CURL) -> CURLcode);
 		let next_curl_easy_setopt_str = load_next_fn!(curl_easy_setopt(handle: *mut CURL, option: CURLoption, value: *const std::ffi::CStr) -> CURLcode);
 		let debug                     = env_bool("CURL_INJECT_OPT_DEBUG");
 		let cert_path                 = get_env_nul("CURL_INJECT_OPT_SSLCERT");
@@ -59,17 +57,16 @@ impl CurlInjectOpt {
 
 		if debug {
 			eprintln!("curl-inject-opt: debug is on");
-			if next_curl_easy_init.is_err() {
-				eprintln!("curl-inject-opt: failed to find curl_easy_init");
+			if let Some(err) = next_curl_easy_perform.as_ref().err() {
+				eprintln!("curl-inject-opt: {}", err);
 			}
-			if next_curl_easy_setopt_str.is_err() {
-				eprintln!("curl-inject-opt: failed to find curl_easy_setopt");
+			if let Some(err) = next_curl_easy_setopt_str.as_ref().err() {
+				eprintln!("curl-inject-opt: {}", err);
 			}
 		}
 
 		let result = Self {
-			next_curl_easy_init:       next_curl_easy_init?,
-			next_curl_easy_reset:      next_curl_easy_reset?,
+			next_curl_easy_perform:    next_curl_easy_perform?,
 			next_curl_easy_setopt_str: next_curl_easy_setopt_str?,
 			cert_path,
 			key_path,
@@ -79,7 +76,7 @@ impl CurlInjectOpt {
 		Ok(result)
 	}
 
-	fn set_str_opt(&self, handle: *mut CURL, opt: curl_sys::CURLoption, value: &std::ffi::CString) -> CURLcode {
+	fn set_easy_str_opt(&self, handle: *mut CURL, opt: curl_sys::CURLoption, value: &std::ffi::CString) -> CURLcode {
 		if self.debug {
 			eprintln!("curl-inject-opt: setting option {}: {:?}", opt, value.as_bytes_with_nul());
 		}
@@ -90,15 +87,15 @@ impl CurlInjectOpt {
 		code
 	}
 
-	fn set_options(&self, handle: *mut CURL) {
+	fn set_easy_options(&self, handle: *mut CURL) {
 		// Set client cert path if requested.
 		if let Some(value) = &self.cert_path {
-			self.set_str_opt(handle, curl_sys::CURLOPT_SSLCERT, value);
+			self.set_easy_str_opt(handle, curl_sys::CURLOPT_SSLCERT, value);
 		}
 
 		// Set client key path if requested.
 		if let Some(value) = &self.key_path {
-			self.set_str_opt(handle, curl_sys::CURLOPT_SSLKEY, value);
+			self.set_easy_str_opt(handle, curl_sys::CURLOPT_SSLKEY, value);
 		}
 	}
 }
@@ -121,37 +118,18 @@ pub static init_curl_inject_opt: extern "C" fn() = {
 };
 
 #[no_mangle]
-pub extern "C" fn curl_easy_init() -> *mut CURL {
+pub extern "C" fn curl_easy_perform(handle: *mut CURL) -> CURLcode {
 	let init = match unsafe { _INIT.as_ref().unwrap() } {
 		Err(string) => panic!("{}", string),
 		Ok(init)    => init,
 	};
 
 	if init.debug {
-		eprintln!("curl-inject-opt: curl_easy_init() called");
+		eprintln!("curl-inject-opt: curl_easy_perform() called");
 	}
 
-	// Delegate to the real handler.
-	let handle = (init.next_curl_easy_init)();
-
-	init.set_options(handle);
-
-	handle
-}
-
-#[no_mangle]
-pub extern "C" fn curl_easy_reset(handle: *mut CURL) {
-	let init = match unsafe { _INIT.as_ref().unwrap() } {
-		Err(string) => panic!("{}", string),
-		Ok(init)    => init,
-	};
-
-	if init.debug {
-		eprintln!("curl-inject-opt: curl_easy_reset() called");
-	}
+	init.set_easy_options(handle);
 
 	// Delegate to the real handler.
-	(init.next_curl_easy_reset)(handle);
-
-	init.set_options(handle);
+	(init.next_curl_easy_perform)(handle)
 }
