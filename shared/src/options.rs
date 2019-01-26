@@ -3,6 +3,14 @@ use super::{CURL, CURLcode, CurlEasySetOpt};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_long;
 
+define_options! [
+	(str, ClientCert, "client-cert", curl_sys::CURLOPT_SSLCERT),
+	(str, ClientKey,  "client-key",  curl_sys::CURLOPT_SSLKEY),
+];
+
+/// The value for a CURL option.
+///
+/// It can be either a null-terminated string, or a long integer as defined by C.
 pub enum OptionValue<'a> {
 	#[used]
 	CStr(&'a CStr),
@@ -12,6 +20,7 @@ pub enum OptionValue<'a> {
 }
 
 impl<'a> std::fmt::Display for OptionValue<'a> {
+	/// Printing an option value simply prints the string value or the integer value.
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 		match *self {
 			OptionValue::CStr(x)  => x.to_string_lossy().fmt(f),
@@ -20,6 +29,11 @@ impl<'a> std::fmt::Display for OptionValue<'a> {
 	}
 }
 
+/// Macro to define all the required boilerplate for a CURL option.
+///
+/// The macro takes care of defining an enum with the right variants,
+/// setting the option on a CURL easy handle,
+/// as well as string serialization and parsing.
 macro_rules! define_options {
 	( $( ($($options:tt)*) ),* $(,)?) => {
 		define_options! { @parse tail {$(($($options)*),)*}; enum {}; setter(curl_easy_setopt, handle) {}; from_str(key, value) {}; key() {}; value() {}; }
@@ -33,18 +47,24 @@ macro_rules! define_options {
 		key() {$($key_body:tt)*};
 		value() {$($value_body:tt)*};
 	) => {
+
+		/// A CURL option with an embedded value.
+		///
+		/// Can be used to set the option, if given a CURL handle.
 		#[derive(Clone, Debug)]
 		pub enum CurlOption {
 			$($enum_body)*
 		}
 
 		impl CurlOption {
+			/// Set the value of this CURL option for a CURL easy handle.
 			pub fn set(&self, $set_easyopt: CurlEasySetOpt, $handle: *mut CURL) -> CURLcode {
 				match self {
 					$($setter_body)*
 				}
 			}
 
+			/// Parse a key=value string as CurlOption.
 			fn parse(raw: &str) -> Result<Self, String> {
 				let split_at = raw.find("=").ok_or_else(|| String::from("invalid format for option, expected name=value"))?;
 				let key      = &raw[..split_at];
@@ -60,6 +80,7 @@ macro_rules! define_options {
 				Self::from_key_value(&key.to_ascii_lowercase(), value)
 			}
 
+			/// Parse a CurlOption from a key and a value.
 			fn from_key_value($key: &str, $value: &str) -> Result<Self, String> {
 				match $key {
 					$($from_str_body)*
@@ -67,32 +88,38 @@ macro_rules! define_options {
 				}
 			}
 
+			/// Parse an integer from a value string.
 			#[used]
 			fn parse_int(key: &str, value: &str) -> Result<std::os::raw::c_long, String> {
 				value.parse().map_err(|_| format!("invalid integer value for option `{}`: {}", key, value))
 			}
 
+			/// Create a null-terminated from a value string.
 			#[used]
 			fn parse_str(key: &str, value: &str) -> Result<CString, String> {
 				CString::new(value).map_err(|_| format!("option `{}` value contains zero byte", key))
 			}
 
+			/// Get the key of this CurlOption.
 			pub fn key(&self) -> &'static str {
 				match self {
 					$($key_body)*
 				}
 			}
 
+			/// Get the value of this CurlOption.
 			pub fn value(&self) -> OptionValue {
 				match self {
 					$($value_body)*
 				}
 			}
 
+			/// Convert this CurlOption to a string that can be parsed by `parse`.
 			pub fn to_string(&self) -> String {
 				format!("{}={}", self.key(), self.value())
 			}
 
+			/// Confirm that a str contains only ASCII, or get the index of the first non-ASCII byte.
 			fn as_ascii(value: &str) -> Result<&str, usize> {
 				for (i, byte) in value.bytes().enumerate() {
 					if !byte.is_ascii() {
@@ -196,8 +223,3 @@ impl std::str::FromStr for CurlOption {
 		Self::parse(value)
 	}
 }
-
-define_options! [
-	(str, ClientCert, "client-cert", curl_sys::CURLOPT_SSLCERT),
-	(str, ClientKey,  "client-key",  curl_sys::CURLOPT_SSLKEY),
-];
