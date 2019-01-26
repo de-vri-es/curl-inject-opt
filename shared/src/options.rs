@@ -1,61 +1,197 @@
 use super::{CURL, CURLcode, DynamicCurl};
 
+use std::ffi::{CStr, CString};
+use std::os::raw::c_long;
+
+enum OptionValue<'a> {
+	#[used]
+	CStr(&'a CStr),
+
+	#[used]
+	CLong(c_long),
+}
+
+impl<'a> std::fmt::Display for OptionValue<'a> {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		match *self {
+			OptionValue::CStr(x)  => x.to_string_lossy().fmt(f),
+			OptionValue::CLong(x) => x.fmt(f),
+		}
+	}
+}
+
 macro_rules! define_options {
 	( $( ($($options:tt)*) ),* $(,)?) => {
-		define_options! { @parse tail {$(($($options)*),)*}; enum {}; setter(handle, lib) {}; }
+		define_options! { @parse tail {$(($($options)*),)*}; enum {}; setter(handle, lib) {}; from_str(key, value) {}; key() {}; value() {}; }
 	};
 
-	(@parse tail {}; enum {$($enum_body:tt)*}; setter($handle:ident, $lib:ident) {$($setter_body:tt)*}; ) => {
-		#[derive(Copy, Clone, Debug)]
-		pub enum CurlOption<'a> {
+	(@parse
+		tail {};
+		enum {$($enum_body:tt)*};
+		setter($handle:ident, $lib:ident) {$($setter_body:tt)*};
+		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
+		key() {$($key_body:tt)*};
+		value() {$($value_body:tt)*};
+	) => {
+		#[derive(Clone, Debug)]
+		pub enum CurlOption {
 			$($enum_body)*
 		}
 
-		impl CurlOption<'_> {
-			pub fn set(self, $handle: *mut CURL, $lib: &DynamicCurl) -> CURLcode {
+		impl CurlOption {
+			pub fn set(&self, $handle: *mut CURL, $lib: &DynamicCurl) -> CURLcode {
 				match self {
 					$($setter_body)*
 				}
 			}
+
+			pub fn parse(raw: &str) -> Result<Self, String> {
+				let split_at = raw.find("=").ok_or_else(|| String::from("invalid format for option, expected name=value"))?;
+				let key      = &raw[..split_at];
+				let value    = &raw[split_at + 1..];
+
+				let key = Self::as_ascii(key).map_err(|i| format!("option contains non-ascii value at index {}: `{}`...", i, &key[..i.min(60)]))?;
+
+				if key.len() > 60 {
+					// Already checked that the whole key is ASCII, so this slicing is safe.
+					return Err(format!("option name exceeds maximum length of 60 characters: {}...", &key[..60]))
+				}
+
+				Self::from_key_value(&key.to_ascii_lowercase(), value)
+			}
+
+			fn from_key_value($key: &str, $value: &str) -> Result<Self, String> {
+				match $key {
+					$($from_str_body)*
+					_ => Err(format!("unrecognized option: {}", $key))
+				}
+			}
+
+			#[used]
+			fn parse_int(key: &str, value: &str) -> Result<std::os::raw::c_long, String> {
+				value.parse().map_err(|_| format!("invalid integer value for option `{}`: {}", key, value))
+			}
+
+			#[used]
+			fn parse_str(key: &str, value: &str) -> Result<CString, String> {
+				CString::new(value).map_err(|_| format!("option `{}` value contains zero byte", key))
+			}
+
+			#[used]
+			fn key(&self) -> &'static str {
+				match self {
+					$($key_body)*
+				}
+			}
+
+			#[used]
+			fn value(&self) -> OptionValue {
+				match self {
+					$($value_body)*
+				}
+			}
+
+			pub fn to_string(&self) -> String {
+				format!("{}={}", self.key(), self.value())
+			}
+
+			fn as_ascii(value: &str) -> Result<&str, usize> {
+				for (i, byte) in value.bytes().enumerate() {
+					if !byte.is_ascii() {
+						return Err(i);
+					}
+				}
+				return Ok(value);
+			}
 		}
 	};
 
-	(@parse tail { (str, $name:ident, $curl_name:expr), $($tail:tt)* }; enum {$($enum_body:tt)*}; setter($handle:ident, $lib:ident) {$($setter_body:tt)*}; ) => {
+	(@parse
+		tail { (str, $rust_name:ident, $name:literal, $curl_name:expr), $($tail:tt)* };
+		enum {$($enum_body:tt)*};
+		setter($handle:ident, $lib:ident) {$($setter_body:tt)*};
+		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
+		key() {$($key_body:tt)*};
+		value() {$($value_body:tt)*};
+	) => {
 		define_options! {
 			@parse
+
 			tail {
 				$($tail)*
 			};
+
 			enum {
 				$($enum_body)*
-				$name(&'a std::ffi::CStr),
+				$rust_name(CString),
 			};
+
 			setter($handle, $lib) {
 				$($setter_body)*
-				CurlOption::$name(x) => $lib.set_option_str($handle, $curl_name, x),
+				CurlOption::$rust_name(x) => $lib.set_option_str($handle, $curl_name, x),
+			};
+
+			from_str($key, $value) {
+				$($from_str_body)*
+				$name => Ok(CurlOption::$rust_name(Self::parse_str($key, $value)?)),
+			};
+
+			key() {
+				$($key_body)*
+				CurlOption::$rust_name(_) => $name,
+			};
+
+			value() {
+				$($value_body)*
+				CurlOption::$rust_name(x) => OptionValue::CStr(x),
 			};
 		}
 	};
 
-	(@parse tail { (int, $name:ident, $curl_name:expr ), $($tail:tt)* }; enum {$($enum_body:tt)*}; setter($handle:ident, $lib:ident) {$($setter_body:tt)*}; ) => {
+	(@parse
+		tail { (int, $rust_name:ident, $name:literal,$curl_name:expr ), $($tail:tt)* };
+		enum {$($enum_body:tt)*};
+		setter($handle:ident, $lib:ident) {$($setter_body:tt)*};
+		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
+		key() {$($key_body:tt)*};
+		value() {$($value_body:tt)*};
+	) => {
 		define_options! {
 			@parse
+
 			tail {
 				$($tail)*
 			};
+
 			enum {
 				$($enum_body)*
-				$name(std::os::raw::c_long),
+				$rust_name(std::os::raw::c_long),
 			};
+
 			setter($handle, $lib) {
 				$($setter_body)*
-				CurlOption::$name(x) => $lib.set_option_int($handle, $curl_name, x),
+				CurlOption::$rust_name(x) => $lib.set_option_int($handle, $curl_name, x),
+			};
+
+			from_str($key, $value) {
+				$($from_str_body)*
+				$name => Ok(CurlOption::$rust_name(Self::parse_int($key, $value)?)),
+			};
+
+			key() {
+				$($key_body)*
+				CurlOption::$rust_name(_) => $name,
+			};
+
+			value() {
+				$($value_body)*
+				CurlOption::$rust_name(x) => OptionValue::CLong(x),
 			};
 		}
 	};
 }
 
 define_options! [
-	(str, ClientCert, curl_sys::CURLOPT_SSLCERT),
-	(str, ClientKey,  curl_sys::CURLOPT_SSLKEY),
+	(str, ClientCert, "client-cert", curl_sys::CURLOPT_SSLCERT),
+	(str, ClientKey,  "client-key",  curl_sys::CURLOPT_SSLKEY),
 ];
