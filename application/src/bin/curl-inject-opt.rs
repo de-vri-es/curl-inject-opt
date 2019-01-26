@@ -1,6 +1,6 @@
 use structopt::StructOpt;
 
-use curl_inject_opt_shared::{PREFIX, LIBDIR};
+use curl_inject_opt_shared::config::{PREFIX, LIBDIR};
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(about = "Set curl options for a subcommand.", author = "")]
@@ -31,7 +31,7 @@ fn main() {
 	let mut command = std::process::Command::new(args.command);
 	let mut command = command.args(args.command_args);
 
-	let preload_lib = std::path::Path::new(LIBDIR).join("libcurl_inject_opt_preload.so");
+	let preload_lib = std::path::Path::new(PREFIX).join(LIBDIR).join("libcurl_inject_opt_preload.so");
 
 	if let Some(old_preload) = std::env::var_os("LD_PRELOAD") {
 		let mut preloads = std::ffi::OsString::with_capacity(preload_lib.as_os_str().len() + old_preload.len() + 1);

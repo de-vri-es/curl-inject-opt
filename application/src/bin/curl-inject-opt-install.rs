@@ -2,7 +2,7 @@ use structopt::StructOpt;
 use std::path::{Path, PathBuf};
 use std::ffi::{OsString};
 
-use curl_inject_opt_shared::{PREFIX, LIBDIR, BINDIR};
+use curl_inject_opt_shared::config::{PREFIX, LIBDIR, BINDIR};
 use ansi_term::Colour::{Red, Green};
 
 #[derive(Debug, Clone, StructOpt)]
@@ -65,8 +65,8 @@ fn install() -> Result<(), String> {
 
 	let cwd     = std::env::current_dir().map_err(|e| format!("Failed to get current working directory: {}", e))?;
 	let destdir = cwd.join(args.destdir);
-	let bindir  = concat_paths(&destdir, BINDIR);
-	let libdir  = concat_paths(&destdir, LIBDIR);
+	let bindir  = concat_paths(&destdir, Path::new(PREFIX).join(BINDIR));
+	let libdir  = concat_paths(&destdir, Path::new(PREFIX).join(LIBDIR));
 
 	std::fs::create_dir_all(&bindir).map_err(|e| format!("Failed to create directory: {}: {}", bindir.display(), e))?;
 	std::fs::create_dir_all(&libdir).map_err(|e| format!("Failed to create directory: {}: {}", bindir.display(), e))?;

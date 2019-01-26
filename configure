@@ -1,0 +1,39 @@
+#!/bin/bash
+
+generate_config() {
+cat <<EOF
+pub const PREFIX : &str = "$PREFIX";
+pub const LIBDIR : &str = "$LIBDIR";
+pub const BINDIR : &str = "$BINDIR";
+EOF
+}
+
+die() {
+	let pattern="$1"
+	shift
+	printf "$1\n" "$@" >&2
+	exit 1
+}
+
+PREFIX="${PREFIX-/usr/local}"
+LIBDIR="${LIBDIR-lib}"
+BINDIR="${BINDIR-bin}"
+
+for arg in "$@"; do
+	[[ $arg =~ ([_a-zA-Z0-9]+)=(.*) ]] || die "unrecognized argument: %s" "$arg"
+	name="${BASH_REMATCH[1]}"
+	value="${BASH_REMATCH[2]}"
+	case "$name" in
+		PREFIX) PREFIX="$value";;
+		LIBDIR) LIBDIR="$value";;
+		BINDIR) BINDIR="$value";;
+		*) die "unrecognized parameter: %s" "$name";;
+	esac
+done
+
+printf "PREFIX: %s\n" "$PREFIX"
+printf "LIBDIR: %s\n" "$LIBDIR"
+printf "BINDIR: %s\n" "$BINDIR"
+
+echo "Generating config.rs"
+generate_config > config.rs

@@ -1,4 +1,4 @@
-mod config {
+pub mod config {
 	#[allow(dead_code)]
 	mod raw {
 		include!("../../config.rs");
