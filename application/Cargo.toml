@@ -1,0 +1,12 @@
+[package]
+name    = "curl-inject-opt"
+version = "0.1.0"
+authors = ["Maarten de Vries <maarten@de-vri.es>"]
+edition = "2018"
+
+[dependencies]
+curl-inject-opt-shared = { path = "../shared" }
+
+ansi_term = "0.11.0"
+libc      = "*"
+structopt = "*"

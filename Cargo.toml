@@ -1,16 +1,2 @@
-[package]
-name    = "curl-inject-opt"
-version = "0.1.0"
-authors = ["Maarten de Vries <maarten@de-vri.es>"]
-edition = "2018"
-build   = "build.rs"
-
-[lib]
-name       = "curl_inject_opt_preload"
-crate-type = ["cdylib"]
-
-[dependencies]
-libc      = "*"
-curl-sys  = "*"
-structopt = "*"
-ansi_term = "0.11.0"
+[workspace]
+members = ["shared", "preload", "application"]

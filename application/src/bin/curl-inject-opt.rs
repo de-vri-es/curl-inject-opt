@@ -1,6 +1,6 @@
 use structopt::StructOpt;
 
-include!(concat!(env!("OUT_DIR"), "/config.rs"));
+use curl_inject_opt_shared::{PREFIX, LIBDIR};
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(about = "Set curl options for a subcommand.", author = "")]

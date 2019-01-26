@@ -2,9 +2,8 @@ use structopt::StructOpt;
 use std::path::{Path, PathBuf};
 use std::ffi::{OsString};
 
+use curl_inject_opt_shared::{PREFIX, LIBDIR, BINDIR};
 use ansi_term::Colour::{Red, Green};
-
-include!(concat!(env!("OUT_DIR"), "/config.rs"));
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(about = "Install the curl-inject-opt binary and preload library.", author = "")]

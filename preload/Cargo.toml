@@ -1,0 +1,13 @@
+[package]
+name    = "curl-inject-opt-preload"
+version = "0.1.0"
+authors = ["Maarten de Vries <maarten@de-vri.es>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+curl-inject-opt-shared = { path = "../shared" }
+libc      = "*"
+curl-sys  = "*"
