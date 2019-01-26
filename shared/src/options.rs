@@ -3,11 +3,6 @@ use super::{CURL, CURLcode, CurlEasySetOpt};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_long;
 
-define_options! [
-	(str, ClientCert, "client-cert", curl_sys::CURLOPT_SSLCERT),
-	(str, ClientKey,  "client-key",  curl_sys::CURLOPT_SSLKEY),
-];
-
 /// The value for a CURL option.
 ///
 /// It can be either a null-terminated string, or a long integer as defined by C.
@@ -35,13 +30,13 @@ impl<'a> std::fmt::Display for OptionValue<'a> {
 /// setting the option on a CURL easy handle,
 /// as well as string serialization and parsing.
 macro_rules! define_options {
-	( $( ($($options:tt)*) ),* $(,)?) => {
-		define_options! { @parse tail {$(($($options)*),)*}; enum {}; setter(curl_easy_setopt, handle) {}; from_str(key, value) {}; key() {}; value() {}; }
+	( enum $enum_name:ident { $($options:tt)* } ) => {
+		define_options! { @parse tail {$($options)*}; enum $enum_name {}; setter(curl_easy_setopt, handle) {}; from_str(key, value) {}; key() {}; value() {}; }
 	};
 
 	(@parse
 		tail {};
-		enum {$($enum_body:tt)*};
+		enum $enum_name:ident {$($enum_body:tt)*};
 		setter($set_easyopt:ident, $handle:ident) {$($setter_body:tt)*};
 		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
 		key() {$($key_body:tt)*};
@@ -52,11 +47,11 @@ macro_rules! define_options {
 		///
 		/// Can be used to set the option, if given a CURL handle.
 		#[derive(Clone, Debug)]
-		pub enum CurlOption {
+		pub enum $enum_name {
 			$($enum_body)*
 		}
 
-		impl CurlOption {
+		impl $enum_name {
 			/// Set the value of this CURL option for a CURL easy handle.
 			pub fn set(&self, $set_easyopt: CurlEasySetOpt, $handle: *mut CURL) -> CURLcode {
 				match self {
@@ -64,7 +59,7 @@ macro_rules! define_options {
 				}
 			}
 
-			/// Parse a key=value string as CurlOption.
+			/// Parse a key=value string as $enum_name.
 			fn parse(raw: &str) -> Result<Self, String> {
 				let split_at = raw.find("=").ok_or_else(|| String::from("invalid format for option, expected name=value"))?;
 				let key      = &raw[..split_at];
@@ -80,7 +75,7 @@ macro_rules! define_options {
 				Self::from_key_value(&key.to_ascii_lowercase(), value)
 			}
 
-			/// Parse a CurlOption from a key and a value.
+			/// Parse a $enum_name from a key and a value.
 			fn from_key_value($key: &str, $value: &str) -> Result<Self, String> {
 				match $key {
 					$($from_str_body)*
@@ -100,21 +95,21 @@ macro_rules! define_options {
 				CString::new(value).map_err(|_| format!("option `{}` value contains zero byte", key))
 			}
 
-			/// Get the key of this CurlOption.
+			/// Get the key of this $enum_name.
 			pub fn key(&self) -> &'static str {
 				match self {
 					$($key_body)*
 				}
 			}
 
-			/// Get the value of this CurlOption.
+			/// Get the value of this $enum_name.
 			pub fn value(&self) -> OptionValue {
 				match self {
 					$($value_body)*
 				}
 			}
 
-			/// Convert this CurlOption to a string that can be parsed by `parse`.
+			/// Convert this $enum_name to a string that can be parsed by `parse`.
 			pub fn to_string(&self) -> String {
 				format!("{}={}", self.key(), self.value())
 			}
@@ -132,8 +127,8 @@ macro_rules! define_options {
 	};
 
 	(@parse
-		tail { (str, $rust_name:ident, $name:literal, $curl_name:expr), $($tail:tt)* };
-		enum {$($enum_body:tt)*};
+		tail { $rust_name:ident(str, $name:literal, $curl_name:expr), $($tail:tt)* };
+		enum $enum_name:ident {$($enum_body:tt)*};
 		setter($set_easyopt:ident, $handle:ident) {$($setter_body:tt)*};
 		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
 		key() {$($key_body:tt)*};
@@ -146,36 +141,36 @@ macro_rules! define_options {
 				$($tail)*
 			};
 
-			enum {
+			enum $enum_name {
 				$($enum_body)*
 				$rust_name(CString),
 			};
 
 			setter($set_easyopt, $handle) {
 				$($setter_body)*
-				CurlOption::$rust_name(x) => ($set_easyopt)($handle, $curl_name, x.as_ref() as *const CStr),
+				$enum_name::$rust_name(x) => ($set_easyopt)($handle, $curl_name, x.as_ref() as *const CStr),
 			};
 
 			from_str($key, $value) {
 				$($from_str_body)*
-				$name => Ok(CurlOption::$rust_name(Self::parse_str($key, $value)?)),
+				$name => Ok($enum_name::$rust_name(Self::parse_str($key, $value)?)),
 			};
 
 			key() {
 				$($key_body)*
-				CurlOption::$rust_name(_) => $name,
+				$enum_name::$rust_name(_) => $name,
 			};
 
 			value() {
 				$($value_body)*
-				CurlOption::$rust_name(x) => OptionValue::CStr(x),
+				$enum_name::$rust_name(x) => OptionValue::CStr(x),
 			};
 		}
 	};
 
 	(@parse
-		tail { (int, $rust_name:ident, $name:literal,$curl_name:expr ), $($tail:tt)* };
-		enum {$($enum_body:tt)*};
+		tail { $rust_name:ident(int, $name:literal,$curl_name:expr ), $($tail:tt)* };
+		enum $enum_name:ident {$($enum_body:tt)*};
 		setter($set_easyopt:ident, $handle:ident) {$($setter_body:tt)*};
 		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
 		key() {$($key_body:tt)*};
@@ -188,29 +183,29 @@ macro_rules! define_options {
 				$($tail)*
 			};
 
-			enum {
+			enum $enum_name {
 				$($enum_body)*
 				$rust_name(std::os::raw::c_long),
 			};
 
 			setter($set_easyopt, $handle) {
 				$($setter_body)*
-				CurlOption::$rust_name(x) => ($set_easyopt)($handle, $curl_name, x),
+				$enum_name::$rust_name(x) => ($set_easyopt)($handle, $curl_name, x),
 			};
 
 			from_str($key, $value) {
 				$($from_str_body)*
-				$name => Ok(CurlOption::$rust_name(Self::parse_int($key, $value)?)),
+				$name => Ok($enum_name::$rust_name(Self::parse_int($key, $value)?)),
 			};
 
 			key() {
 				$($key_body)*
-				CurlOption::$rust_name(_) => $name,
+				$enum_name::$rust_name(_) => $name,
 			};
 
 			value() {
 				$($value_body)*
-				CurlOption::$rust_name(x) => OptionValue::CLong(x),
+				$enum_name::$rust_name(x) => OptionValue::CLong(x),
 			};
 		}
 	};
@@ -223,3 +218,10 @@ impl std::str::FromStr for CurlOption {
 		Self::parse(value)
 	}
 }
+
+define_options!(
+	enum CurlOption {
+		ClientCert(str, "client-cert", curl_sys::CURLOPT_SSLCERT),
+		ClientKey(str,  "client-key",  curl_sys::CURLOPT_SSLKEY),
+	}
+);
