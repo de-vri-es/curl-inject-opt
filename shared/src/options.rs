@@ -1,9 +1,9 @@
-use super::{CURL, CURLcode, DynamicCurl};
+use super::{CURL, CURLcode, CurlEasySetOpt};
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_long;
 
-enum OptionValue<'a> {
+pub enum OptionValue<'a> {
 	#[used]
 	CStr(&'a CStr),
 
@@ -22,13 +22,13 @@ impl<'a> std::fmt::Display for OptionValue<'a> {
 
 macro_rules! define_options {
 	( $( ($($options:tt)*) ),* $(,)?) => {
-		define_options! { @parse tail {$(($($options)*),)*}; enum {}; setter(handle, lib) {}; from_str(key, value) {}; key() {}; value() {}; }
+		define_options! { @parse tail {$(($($options)*),)*}; enum {}; setter(curl_easy_setopt, handle) {}; from_str(key, value) {}; key() {}; value() {}; }
 	};
 
 	(@parse
 		tail {};
 		enum {$($enum_body:tt)*};
-		setter($handle:ident, $lib:ident) {$($setter_body:tt)*};
+		setter($set_easyopt:ident, $handle:ident) {$($setter_body:tt)*};
 		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
 		key() {$($key_body:tt)*};
 		value() {$($value_body:tt)*};
@@ -39,13 +39,13 @@ macro_rules! define_options {
 		}
 
 		impl CurlOption {
-			pub fn set(&self, $handle: *mut CURL, $lib: &DynamicCurl) -> CURLcode {
+			pub fn set(&self, $set_easyopt: CurlEasySetOpt, $handle: *mut CURL) -> CURLcode {
 				match self {
 					$($setter_body)*
 				}
 			}
 
-			pub fn parse(raw: &str) -> Result<Self, String> {
+			fn parse(raw: &str) -> Result<Self, String> {
 				let split_at = raw.find("=").ok_or_else(|| String::from("invalid format for option, expected name=value"))?;
 				let key      = &raw[..split_at];
 				let value    = &raw[split_at + 1..];
@@ -77,15 +77,13 @@ macro_rules! define_options {
 				CString::new(value).map_err(|_| format!("option `{}` value contains zero byte", key))
 			}
 
-			#[used]
-			fn key(&self) -> &'static str {
+			pub fn key(&self) -> &'static str {
 				match self {
 					$($key_body)*
 				}
 			}
 
-			#[used]
-			fn value(&self) -> OptionValue {
+			pub fn value(&self) -> OptionValue {
 				match self {
 					$($value_body)*
 				}
@@ -109,7 +107,7 @@ macro_rules! define_options {
 	(@parse
 		tail { (str, $rust_name:ident, $name:literal, $curl_name:expr), $($tail:tt)* };
 		enum {$($enum_body:tt)*};
-		setter($handle:ident, $lib:ident) {$($setter_body:tt)*};
+		setter($set_easyopt:ident, $handle:ident) {$($setter_body:tt)*};
 		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
 		key() {$($key_body:tt)*};
 		value() {$($value_body:tt)*};
@@ -126,9 +124,9 @@ macro_rules! define_options {
 				$rust_name(CString),
 			};
 
-			setter($handle, $lib) {
+			setter($set_easyopt, $handle) {
 				$($setter_body)*
-				CurlOption::$rust_name(x) => $lib.set_option_str($handle, $curl_name, x),
+				CurlOption::$rust_name(x) => ($set_easyopt)($handle, $curl_name, x.as_ref() as *const CStr),
 			};
 
 			from_str($key, $value) {
@@ -151,7 +149,7 @@ macro_rules! define_options {
 	(@parse
 		tail { (int, $rust_name:ident, $name:literal,$curl_name:expr ), $($tail:tt)* };
 		enum {$($enum_body:tt)*};
-		setter($handle:ident, $lib:ident) {$($setter_body:tt)*};
+		setter($set_easyopt:ident, $handle:ident) {$($setter_body:tt)*};
 		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
 		key() {$($key_body:tt)*};
 		value() {$($value_body:tt)*};
@@ -168,9 +166,9 @@ macro_rules! define_options {
 				$rust_name(std::os::raw::c_long),
 			};
 
-			setter($handle, $lib) {
+			setter($set_easyopt, $handle) {
 				$($setter_body)*
-				CurlOption::$rust_name(x) => $lib.set_option_int($handle, $curl_name, x),
+				CurlOption::$rust_name(x) => ($set_easyopt)($handle, $curl_name, x),
 			};
 
 			from_str($key, $value) {
@@ -189,6 +187,14 @@ macro_rules! define_options {
 			};
 		}
 	};
+}
+
+impl std::str::FromStr for CurlOption {
+	type Err = String;
+
+	fn from_str(value: &str) -> Result<Self, Self::Err> {
+		Self::parse(value)
+	}
 }
 
 define_options! [

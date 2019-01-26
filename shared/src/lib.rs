@@ -13,25 +13,17 @@ pub use curl_sys::CURL;
 pub use curl_sys::CURLoption;
 pub use curl_sys::CURLcode;
 
-pub type CurlEasySetOpt = extern "C" fn(handle: *mut CURL, option: CURLoption, ...) -> CURLcode;
+pub type CurlEasySetOpt  = extern "C" fn(handle: *mut CURL, option: CURLoption, ...) -> CURLcode;
+pub type CurlEasyPerform = extern "C" fn(handle: *mut CURL) -> CURLcode;
 
-pub struct DynamicCurl {
-	curl_easy_setopt: CurlEasySetOpt,
+pub fn serialize_options<'a>(options: impl Iterator<Item = &'a CurlOption>) -> Result<String, String> {
+	let vec : Vec<String> = options.map(|option| option.to_string()).collect();
+	serde_json::to_string(&vec).map_err(|x| format!("failed to encode curl options: {}", x))
 }
 
-
-impl DynamicCurl {
-	pub fn set_option(&self, handle: *mut CURL, option: CurlOption) -> CURLcode {
-		option.set(handle, self)
-	}
-
-	pub fn set_option_str(&self, handle: *mut CURL, option: CURLoption, value: &std::ffi::CStr) -> CURLcode {
-		(self.curl_easy_setopt)(handle, option, value as *const std::ffi::CStr)
-	}
-
-	pub fn set_option_int(&self, handle: *mut CURL, option: CURLoption, value: std::os::raw::c_long) -> CURLcode {
-		(self.curl_easy_setopt)(handle, option, value)
-	}
+pub fn parse_options(data: &str) -> Result<Vec<CurlOption>, String> {
+	let vec : Vec<String> = serde_json::from_str(data).map_err(|x| format!("failed to parse curl options: {}", x))?;
+	vec.iter().map(|x| x.parse()).collect()
 }
 
 mod options;

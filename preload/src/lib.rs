@@ -1,10 +1,9 @@
 use std::ffi::CStr;
-use std::os::unix::ffi::OsStrExt;
 
-use curl_sys::{CURL, CURLcode, CURLoption};
+use curl_inject_opt_shared::{CURL, CURLcode, CurlEasySetOpt, CurlEasyPerform, CurlOption, parse_options};
 
 macro_rules! load_next_fn {
-	( $name:ident ( $($arg:ident : $type:ty),*$(,)? ) $( -> $ret:ty )? ) => {{
+	( $name:ident : $type:ty ) => {{
 		let name = unsafe { CStr::from_bytes_with_nul_unchecked(concat!(stringify!($name), "\0").as_bytes()) };
 		unsafe {
 			// Clear dlerror() before calling dlsym().
@@ -20,7 +19,7 @@ macro_rules! load_next_fn {
 				Err(format!("failed to look up symbol {}: {}", stringify!($name), CStr::from_ptr(error).to_string_lossy()))
 			} else {
 				// Convert to Ok(fn).
-				let symbol : extern "C" fn($($arg : $type),*) $( -> $ret )? = std::mem::transmute(symbol);
+				let symbol : $type = std::mem::transmute(symbol);
 				Ok(symbol)
 			}
 		}
@@ -28,11 +27,10 @@ macro_rules! load_next_fn {
 }
 
 struct CurlInjectOpt {
-	next_curl_easy_perform    : extern "C" fn(handle: *mut CURL) -> CURLcode,
-	next_curl_easy_setopt_str : extern "C" fn(handle: *mut CURL, option: CURLoption, value: *const std::ffi::CStr) -> CURLcode,
-	debug                     : bool,
-	cert_path                 : Option<std::ffi::CString>,
-	key_path                  : Option<std::ffi::CString>,
+	curl_easy_perform : CurlEasyPerform,
+	curl_easy_setopt  : CurlEasySetOpt,
+	options           : Vec<CurlOption>,
+	debug             : bool,
 }
 
 fn env_bool(name: &str) -> bool {
@@ -43,59 +41,53 @@ fn env_bool(name: &str) -> bool {
 	}
 }
 
-fn get_env_nul(name: impl AsRef<std::ffi::OsStr>) -> Option<std::ffi::CString> {
-	Some(std::ffi::CString::new(std::env::var_os(name)?.as_bytes()).unwrap())
-}
-
 impl CurlInjectOpt {
 	fn init() -> Result<Self, String> {
-		let next_curl_easy_perform    = load_next_fn!(curl_easy_perform(handle: *mut CURL) -> CURLcode);
-		let next_curl_easy_setopt_str = load_next_fn!(curl_easy_setopt(handle: *mut CURL, option: CURLoption, value: *const std::ffi::CStr) -> CURLcode);
-		let debug                     = env_bool("CURL_INJECT_OPT_DEBUG");
-		let cert_path                 = get_env_nul("CURL_INJECT_OPT_SSLCERT");
-		let key_path                  = get_env_nul("CURL_INJECT_OPT_SSLKEY");
+		let curl_easy_perform = load_next_fn!(curl_easy_perform : CurlEasyPerform);
+		let curl_easy_setopt  = load_next_fn!(curl_easy_setopt  : CurlEasySetOpt);
+		let options           = std::env::var("CURL_INJECT_OPT").expect("invalid UTF-8 in CURL_INJECT_OPT environment variable");
+		let debug             = env_bool("CURL_INJECT_OPT_DEBUG");
+
+		let options = if options.is_empty() {
+			Vec::new()
+		} else {
+			parse_options(&options).expect("failed to parse CURL_INJECT_OPT")
+		};
 
 		if debug {
 			eprintln!("curl-inject-opt: debug is on");
-			if let Some(err) = next_curl_easy_perform.as_ref().err() {
+			if let Some(err) = curl_easy_perform.as_ref().err() {
 				eprintln!("curl-inject-opt: {}", err);
 			}
-			if let Some(err) = next_curl_easy_setopt_str.as_ref().err() {
+			if let Some(err) = curl_easy_setopt.as_ref().err() {
 				eprintln!("curl-inject-opt: {}", err);
 			}
 		}
 
 		let result = Self {
-			next_curl_easy_perform:    next_curl_easy_perform?,
-			next_curl_easy_setopt_str: next_curl_easy_setopt_str?,
-			cert_path,
-			key_path,
+			curl_easy_perform: curl_easy_perform?,
+			curl_easy_setopt:  curl_easy_setopt?,
+			options,
 			debug,
 		};
 
 		Ok(result)
 	}
 
-	fn set_easy_str_opt(&self, handle: *mut CURL, opt: curl_sys::CURLoption, value: &std::ffi::CString) -> CURLcode {
+	fn set_option(&self, handle: *mut CURL, option: &CurlOption) -> CURLcode {
 		if self.debug {
-			eprintln!("curl-inject-opt: setting option {}: {:?}", opt, value.as_bytes_with_nul());
+			eprintln!("curl-inject-opt: setting option {}: {}", option.key(), option.value());
 		}
-		let code = (self.next_curl_easy_setopt_str)(handle, opt, value.as_c_str());
+		let code = option.set(self.curl_easy_setopt, handle);
 		if code != curl_sys::CURLE_OK {
-			eprintln!("curl-inject-opt: failed to set option {}: error {}", opt, code);
+			eprintln!("curl-inject-opt: failed to set option {}: error {}", option.key(), code);
 		}
 		code
 	}
 
-	fn set_easy_options(&self, handle: *mut CURL) {
-		// Set client cert path if requested.
-		if let Some(value) = &self.cert_path {
-			self.set_easy_str_opt(handle, curl_sys::CURLOPT_SSLCERT, value);
-		}
-
-		// Set client key path if requested.
-		if let Some(value) = &self.key_path {
-			self.set_easy_str_opt(handle, curl_sys::CURLOPT_SSLKEY, value);
+	fn set_options(&self, handle: *mut CURL) {
+		for option in &self.options {
+			self.set_option(handle, option);
 		}
 	}
 }
@@ -128,8 +120,7 @@ pub extern "C" fn curl_easy_perform(handle: *mut CURL) -> CURLcode {
 		eprintln!("curl-inject-opt: curl_easy_perform() called");
 	}
 
-	init.set_easy_options(handle);
-
-	// Delegate to the real handler.
-	(init.next_curl_easy_perform)(handle)
+	// Set options, then delegate to the real handler.
+	init.set_options(handle);
+	(init.curl_easy_perform)(handle)
 }
