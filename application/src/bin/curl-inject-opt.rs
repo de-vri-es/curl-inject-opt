@@ -1,7 +1,6 @@
 use structopt::StructOpt;
 
-use curl_inject_opt_shared::config::{PREFIX, LIBDIR};
-use curl_inject_opt_shared::{CurlOption, serialize_options};
+use curl_inject_opt_shared::{CurlOption, parse_config, serialize_options};
 
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(about = "Set curl options for a subcommand.", author = "")]
@@ -21,12 +20,14 @@ struct Args {
 fn main() {
 	let args = Args::from_args();
 
+	let config = parse_config().expect("baked-in config does not parse");
+
 	use std::os::unix::process::CommandExt;
 
 	let mut command = std::process::Command::new(&args.command[0]);
 	let mut command = command.args(&args.command[1..]);
 
-	let preload_lib = std::path::Path::new(PREFIX).join(LIBDIR).join("libcurl_inject_opt_preload.so");
+	let preload_lib = config.libdir().join("libcurl_inject_opt_preload.so");
 
 	if let Some(old_preload) = std::env::var_os("LD_PRELOAD") {
 		let mut preloads = std::ffi::OsString::with_capacity(preload_lib.as_os_str().len() + old_preload.len() + 1);

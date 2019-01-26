@@ -2,7 +2,7 @@ use structopt::StructOpt;
 use std::path::{Path, PathBuf};
 use std::ffi::{OsString};
 
-use curl_inject_opt_shared::config::{PREFIX, LIBDIR, BINDIR};
+use curl_inject_opt_shared::parse_config;
 use ansi_term::Colour::{Red, Green};
 
 #[derive(Debug, Clone, StructOpt)]
@@ -63,13 +63,15 @@ fn install_file(mode: u32, source: impl AsRef<Path>, dest_dir: impl AsRef<Path>)
 fn install() -> Result<(), String> {
 	let args = Args::from_args();
 
+	let config = parse_config()?;
+
 	let cwd     = std::env::current_dir().map_err(|e| format!("Failed to get current working directory: {}", e))?;
 	let destdir = cwd.join(args.destdir);
-	let bindir  = concat_paths(&destdir, Path::new(PREFIX).join(BINDIR));
-	let libdir  = concat_paths(&destdir, Path::new(PREFIX).join(LIBDIR));
+	let libdir  = concat_paths(&destdir, config.libdir());
+	let bindir  = concat_paths(&destdir, config.bindir());
 
+	std::fs::create_dir_all(&libdir).map_err(|e| format!("Failed to create directory: {}: {}", libdir.display(), e))?;
 	std::fs::create_dir_all(&bindir).map_err(|e| format!("Failed to create directory: {}: {}", bindir.display(), e))?;
-	std::fs::create_dir_all(&libdir).map_err(|e| format!("Failed to create directory: {}: {}", bindir.display(), e))?;
 
 	install_file(0o755, "target/release/curl-inject-opt",               bindir)?;
 	install_file(0o755, "target/release/libcurl_inject_opt_preload.so", libdir)?;

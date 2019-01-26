@@ -1,13 +1,8 @@
-pub mod config {
-	#[allow(dead_code)]
-	mod raw {
-		include!("../../config.rs");
-	}
+mod config;
+mod options;
 
-	pub use raw::PREFIX;
-	pub use raw::LIBDIR;
-	pub use raw::BINDIR;
-}
+pub use self::config::{Config, parse_config};
+pub use self::options::CurlOption;
 
 pub use curl_sys::CURL;
 pub use curl_sys::CURLoption;
@@ -25,9 +20,6 @@ pub fn parse_options(data: &str) -> Result<Vec<CurlOption>, String> {
 	let vec : Vec<String> = serde_json::from_str(data).map_err(|x| format!("failed to parse curl options: {}", x))?;
 	vec.iter().map(|x| x.parse()).collect()
 }
-
-mod options;
-pub use options::CurlOption;
 
 // #[derive(Clone, Copy, Debug)]
 // pub enum CurlOption<'a> {
