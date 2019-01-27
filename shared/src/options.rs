@@ -7,8 +7,8 @@ use serde_derive::{Deserialize, Serialize};
 
 /// Global list of known CURL options.
 pub const OPTIONS : &[Meta] = &[
-	Meta::new("client-cert", curl_sys::CURLOPT_SSLCERT, Kind::CString),
-	Meta::new("client-key",  curl_sys::CURLOPT_SSLKEY,  Kind::CString),
+	Meta::new("client-cert", curl_sys::CURLOPT_SSLCERT, Kind::CString, "Use a client certificate to authenticate with a remote server."),
+	Meta::new("client-key",  curl_sys::CURLOPT_SSLKEY,  Kind::CString, "Use the given key with the client certificate. Useful if the key isn't embedded in the certificate."),
 ];
 
 /// The possible kinds of CURL options.
@@ -66,12 +66,15 @@ pub struct Meta {
 
 	/// The type of the options: CString or CLong.
 	pub kind: Kind,
+
+	/// A description of the option for humans.
+	pub help: &'static str,
 }
 
 impl Meta {
 	/// Create the metadata for a CURL option from the components.
-	pub const fn new(name: &'static str, option: CURLoption, kind: Kind) -> Self {
-		Self{name, option, kind}
+	pub const fn new(name: &'static str, option: CURLoption, kind: Kind, help: &'static str) -> Self {
+		Self{name, option, kind, help}
 	}
 }
 
