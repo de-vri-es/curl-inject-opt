@@ -1,227 +1,139 @@
-use super::{CURL, CURLcode, CurlEasySetOpt};
+use super::{CURL, CURLcode, CURLoption, CurlEasySetOpt};
 
 use std::ffi::{CStr, CString};
 use std::os::raw::c_long;
 
+use serde_derive::{Deserialize, Serialize};
+
+/// Global list of known CURL options.
+pub const OPTIONS : &[Meta] = &[
+	Meta::new("client-cert", curl_sys::CURLOPT_SSLCERT, Kind::CString),
+	Meta::new("client-key",  curl_sys::CURLOPT_SSLKEY,  Kind::CString),
+];
+
+/// The possible kinds of CURL options.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+pub enum Kind {
+	CString,
+	CLong,
+}
+
+impl std::fmt::Display for Kind {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		match self {
+			Kind::CString => "string".fmt(f),
+			Kind::CLong   => "integer".fmt(f),
+		}
+	}
+}
+
 /// The value for a CURL option.
 ///
 /// It can be either a null-terminated string, or a long integer as defined by C.
-pub enum OptionValue<'a> {
-	#[used]
-	CStr(&'a CStr),
-
-	#[used]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub enum Value {
+	CString(CString),
 	CLong(c_long),
 }
 
-impl<'a> std::fmt::Display for OptionValue<'a> {
-	/// Printing an option value simply prints the string value or the integer value.
+impl Value {
+	/// Get the kind of the the value.
+	fn kind(&self) -> Kind {
+		match self {
+			Value::CString(_) => Kind::CString,
+			Value::CLong(_)   => Kind::CLong,
+		}
+	}
+}
+
+impl std::fmt::Display for Value {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-		match *self {
-			OptionValue::CStr(x)  => x.to_string_lossy().fmt(f),
-			OptionValue::CLong(x) => x.fmt(f),
+		match self {
+			Value::CString(x) => x.to_string_lossy().fmt(f),
+			Value::CLong(x)   => x.fmt(f),
 		}
 	}
 }
 
-/// Macro to define all the required boilerplate for a CURL option.
+/// Metadata for a CURL option.
+#[derive(Clone, Copy, Debug)]
+pub struct Meta {
+	/// A human friendly name for the option.
+	pub name: &'static str,
+
+	/// The CURLoption value for the option.
+	pub option: CURLoption,
+
+	/// The type of the options: CString or CLong.
+	pub kind: Kind,
+}
+
+impl Meta {
+	/// Create the metadata for a CURL option from the components.
+	pub const fn new(name: &'static str, option: CURLoption, kind: Kind) -> Self {
+		Self{name, option, kind}
+	}
+}
+
+/// A CURL option with an embedded value.
 ///
-/// The macro takes care of defining an enum with the right variants,
-/// setting the option on a CURL easy handle,
-/// as well as string serialization and parsing.
-macro_rules! define_options {
-	( enum $enum_name:ident { $($options:tt)* } ) => {
-		define_options! { @parse tail {$($options)*}; enum $enum_name {}; setter(curl_easy_setopt, handle) {}; from_str(key, value) {}; key() {}; value() {}; }
-	};
+/// Can be used to set the option on a CURL handle.
+pub struct SetOption {
+	/// A human friendly name for the option.
+	pub name: &'static str,
 
-	(@parse
-		tail {};
-		enum $enum_name:ident {$($enum_body:tt)*};
-		setter($set_easyopt:ident, $handle:ident) {$($setter_body:tt)*};
-		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
-		key() {$($key_body:tt)*};
-		value() {$($value_body:tt)*};
-	) => {
+	/// The CURLoption value for the option.
+	pub option: CURLoption,
 
-		/// A CURL option with an embedded value.
-		///
-		/// Can be used to set the option, if given a CURL handle.
-		#[derive(Clone, Debug)]
-		pub enum $enum_name {
-			$($enum_body)*
-		}
-
-		impl $enum_name {
-			/// Set the value of this CURL option for a CURL easy handle.
-			pub fn set(&self, $set_easyopt: CurlEasySetOpt, $handle: *mut CURL) -> CURLcode {
-				match self {
-					$($setter_body)*
-				}
-			}
-
-			/// Parse a key=value string as $enum_name.
-			fn parse(raw: &str) -> Result<Self, String> {
-				let split_at = raw.find("=").ok_or_else(|| String::from("invalid format for option, expected name=value"))?;
-				let key      = &raw[..split_at];
-				let value    = &raw[split_at + 1..];
-
-				let key = Self::as_ascii(key).map_err(|i| format!("option contains non-ascii value at index {}: `{}`...", i, &key[..i.min(60)]))?;
-
-				if key.len() > 60 {
-					// Already checked that the whole key is ASCII, so this slicing is safe.
-					return Err(format!("option name exceeds maximum length of 60 characters: {}...", &key[..60]))
-				}
-
-				Self::from_key_value(&key.to_ascii_lowercase(), value)
-			}
-
-			/// Parse a $enum_name from a key and a value.
-			fn from_key_value($key: &str, $value: &str) -> Result<Self, String> {
-				match $key {
-					$($from_str_body)*
-					_ => Err(format!("unrecognized option: {}", $key))
-				}
-			}
-
-			/// Parse an integer from a value string.
-			#[used]
-			fn parse_int(key: &str, value: &str) -> Result<std::os::raw::c_long, String> {
-				value.parse().map_err(|_| format!("invalid integer value for option `{}`: {}", key, value))
-			}
-
-			/// Create a null-terminated from a value string.
-			#[used]
-			fn parse_str(key: &str, value: &str) -> Result<CString, String> {
-				CString::new(value).map_err(|_| format!("option `{}` value contains zero byte", key))
-			}
-
-			/// Get the key of this $enum_name.
-			pub fn key(&self) -> &'static str {
-				match self {
-					$($key_body)*
-				}
-			}
-
-			/// Get the value of this $enum_name.
-			pub fn value(&self) -> OptionValue {
-				match self {
-					$($value_body)*
-				}
-			}
-
-			/// Convert this $enum_name to a string that can be parsed by `parse`.
-			pub fn to_string(&self) -> String {
-				format!("{}={}", self.key(), self.value())
-			}
-
-			/// Confirm that a str contains only ASCII, or get the index of the first non-ASCII byte.
-			fn as_ascii(value: &str) -> Result<&str, usize> {
-				for (i, byte) in value.bytes().enumerate() {
-					if !byte.is_ascii() {
-						return Err(i);
-					}
-				}
-				return Ok(value);
-			}
-		}
-	};
-
-	(@parse
-		tail { $rust_name:ident(str, $name:literal, $curl_name:expr), $($tail:tt)* };
-		enum $enum_name:ident {$($enum_body:tt)*};
-		setter($set_easyopt:ident, $handle:ident) {$($setter_body:tt)*};
-		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
-		key() {$($key_body:tt)*};
-		value() {$($value_body:tt)*};
-	) => {
-		define_options! {
-			@parse
-
-			tail {
-				$($tail)*
-			};
-
-			enum $enum_name {
-				$($enum_body)*
-				$rust_name(CString),
-			};
-
-			setter($set_easyopt, $handle) {
-				$($setter_body)*
-				$enum_name::$rust_name(x) => ($set_easyopt)($handle, $curl_name, x.as_ref() as *const CStr),
-			};
-
-			from_str($key, $value) {
-				$($from_str_body)*
-				$name => Ok($enum_name::$rust_name(Self::parse_str($key, $value)?)),
-			};
-
-			key() {
-				$($key_body)*
-				$enum_name::$rust_name(_) => $name,
-			};
-
-			value() {
-				$($value_body)*
-				$enum_name::$rust_name(x) => OptionValue::CStr(x),
-			};
-		}
-	};
-
-	(@parse
-		tail { $rust_name:ident(int, $name:literal,$curl_name:expr ), $($tail:tt)* };
-		enum $enum_name:ident {$($enum_body:tt)*};
-		setter($set_easyopt:ident, $handle:ident) {$($setter_body:tt)*};
-		from_str($key:ident, $value:ident) {$($from_str_body:tt)*};
-		key() {$($key_body:tt)*};
-		value() {$($value_body:tt)*};
-	) => {
-		define_options! {
-			@parse
-
-			tail {
-				$($tail)*
-			};
-
-			enum $enum_name {
-				$($enum_body)*
-				$rust_name(std::os::raw::c_long),
-			};
-
-			setter($set_easyopt, $handle) {
-				$($setter_body)*
-				$enum_name::$rust_name(x) => ($set_easyopt)($handle, $curl_name, x),
-			};
-
-			from_str($key, $value) {
-				$($from_str_body)*
-				$name => Ok($enum_name::$rust_name(Self::parse_int($key, $value)?)),
-			};
-
-			key() {
-				$($key_body)*
-				$enum_name::$rust_name(_) => $name,
-			};
-
-			value() {
-				$($value_body)*
-				$enum_name::$rust_name(x) => OptionValue::CLong(x),
-			};
-		}
-	};
+	/// The value to set for the option.
+	pub value: Value,
 }
 
-impl std::str::FromStr for CurlOption {
-	type Err = String;
+impl SetOption {
+	/// Parse the value for an option with known metadata.
+	pub fn parse_value(meta: Meta, value: &str) -> Result<Self, String> {
+		let value = match meta.kind {
+			Kind::CString => Value::CString(CString::new(value).map_err(|_| format!("value for option {} contains a null byte", meta.name))?),
+			Kind::CLong   => Value::CLong(value.parse().map_err(|_| format!("invalid integer value for option {}", meta.name))?),
+		};
 
-	fn from_str(value: &str) -> Result<Self, Self::Err> {
-		Self::parse(value)
+		Ok(Self{name: meta.name, option: meta.option, value})
+	}
+
+	/// Parse an option from the name and value.
+	///
+	/// The name will be lookup up in the global OPTIONS list to retrieve the required metadata.
+	pub fn parse_name_value(name: &str, value: &str) -> Result<Self, String> {
+		for candidate in OPTIONS {
+			if name.eq_ignore_ascii_case(candidate.name) {
+				return Self::parse_value(*candidate, value)
+			}
+		}
+
+		Err(format!("unknown option: {}", name))
+	}
+
+	/// Parse an option from the name and value.
+	///
+	/// The name will be lookup up in the global OPTIONS list to retrieve the required metadata.
+	pub fn parse_name(name: &str, value: Value) -> Result<Self, String> {
+		for candidate in OPTIONS {
+			if name.eq_ignore_ascii_case(candidate.name) {
+				if candidate.kind != value.kind() {
+					return Err(format!("wrong value type for option {}: expected {} but got {}", candidate.name, candidate.kind, value.kind()))
+				}
+				return Ok(Self{name: candidate.name, option: candidate.option, value: value})
+			}
+		}
+
+		Err(format!("unknown option: {}", name))
+	}
+
+	/// Set the value of this CURL option for a CURL easy handle.
+	pub fn set(&self, curl_easy_setopt: CurlEasySetOpt, handle: *mut CURL) -> CURLcode {
+		match &self.value {
+			Value::CString(x) => curl_easy_setopt(handle, self.option, x.as_ref() as *const CStr),
+			Value::CLong(x)   => curl_easy_setopt(handle, self.option, *x),
+		}
 	}
 }
-
-define_options!(
-	enum CurlOption {
-		ClientCert(str, "client-cert", curl_sys::CURLOPT_SSLCERT),
-		ClientKey(str,  "client-key",  curl_sys::CURLOPT_SSLKEY),
-	}
-);

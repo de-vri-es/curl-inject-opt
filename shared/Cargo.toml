@@ -5,5 +5,7 @@ authors = ["Maarten de Vries <maarten@de-vri.es>"]
 edition = "2018"
 
 [dependencies]
-curl-sys   = "*"
-serde_json = "*"
+curl-sys     = "*"
+serde_json   = "*"
+serde        = "*"
+serde_derive = "*"

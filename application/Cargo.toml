@@ -9,4 +9,5 @@ curl-inject-opt-shared = { path = "../shared" }
 
 ansi_term = "0.11.0"
 libc      = "*"
+clap      = "*"
 structopt = "*"

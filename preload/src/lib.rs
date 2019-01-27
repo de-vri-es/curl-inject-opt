@@ -1,6 +1,6 @@
 use std::ffi::CStr;
 
-use curl_inject_opt_shared::{CURL, CURLcode, CurlEasySetOpt, CurlEasyPerform, CurlOption, parse_options};
+use curl_inject_opt_shared::{CURL, CURLcode, CurlEasySetOpt, CurlEasyPerform, SetOption, parse_options};
 
 macro_rules! load_next_fn {
 	( $name:ident : $type:ty ) => {{
@@ -29,7 +29,7 @@ macro_rules! load_next_fn {
 struct CurlInjectOpt {
 	curl_easy_perform : CurlEasyPerform,
 	curl_easy_setopt  : CurlEasySetOpt,
-	options           : Vec<CurlOption>,
+	options           : Vec<SetOption>,
 	debug             : bool,
 }
 
@@ -74,13 +74,13 @@ impl CurlInjectOpt {
 		Ok(result)
 	}
 
-	fn set_option(&self, handle: *mut CURL, option: &CurlOption) -> CURLcode {
+	fn set_option(&self, handle: *mut CURL, option: &SetOption) -> CURLcode {
 		if self.debug {
-			eprintln!("curl-inject-opt: setting option {}: {}", option.key(), option.value());
+			eprintln!("curl-inject-opt: setting option {}: {}", option.name, option.value);
 		}
 		let code = option.set(self.curl_easy_setopt, handle);
 		if code != curl_sys::CURLE_OK {
-			eprintln!("curl-inject-opt: failed to set option {}: error {}", option.key(), code);
+			eprintln!("curl-inject-opt: failed to set option {}: error {}", option.name, code);
 		}
 		code
 	}

@@ -1,31 +1,42 @@
-use structopt::StructOpt;
+use curl_inject_opt_shared::{OPTIONS, SetOption, parse_config, serialize_options};
 
-use curl_inject_opt_shared::{CurlOption, parse_config, serialize_options};
+fn build_clap<'a, 'b>() -> clap::App<'a, 'b> {
+	let mut app = clap::App::new("curl-inject-opt")
+		.setting(clap::AppSettings::TrailingVarArg)
+		.about("Inject options into CURL requests for a subcommand.")
+		.arg(clap::Arg::with_name("debug")
+			.long("--debug")
+			.short("d")
+			.help("Enable some debug printing in the preloaded library.")
+		).arg(clap::Arg::with_name("COMMAND")
+			.required(true)
+			.multiple(true)
+			.help("The command to run.")
+		);
 
-#[derive(Debug, Clone, StructOpt)]
-#[structopt(about = "Set curl options for a subcommand.", author = "")]
-#[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
-#[structopt(raw(setting = "structopt::clap::AppSettings::TrailingVarArg"))]
-struct Args {
-	#[structopt(long = "debug")]
-	debug: bool,
+	for option in OPTIONS {
+		app = app.arg(clap::Arg::with_name(option.name)
+			.long(option.name)
+			.takes_value(true)
+		);
+	}
 
-	#[structopt(short = "-o", long = "--option", number_of_values = 1, multiple = true)]
-	options: Vec<CurlOption>,
-
-	#[structopt(name = "COMMAND", required = true)]
-	command: Vec<String>,
+	app
 }
 
 fn main() {
-	let args = Args::from_args();
+	let args = build_clap().get_matches();
+
+	let debug = args.is_present("debug");
+
+	let command : Vec<&str> = args.values_of("COMMAND").unwrap().collect();
 
 	let config = parse_config().expect("baked-in config does not parse");
 
 	use std::os::unix::process::CommandExt;
 
-	let mut command = std::process::Command::new(&args.command[0]);
-	let mut command = command.args(&args.command[1..]);
+	let mut child = std::process::Command::new(&command[0]);
+	let mut child = child.args(&command[1..]);
 
 	let preload_lib = config.libdir().join("libcurl_inject_opt_preload.so");
 
@@ -34,12 +45,26 @@ fn main() {
 		preloads.push(preload_lib.as_os_str());
 		preloads.push(":");
 		preloads.push(old_preload);
-		command = command.env("LD_PRELOAD", preloads);
+		child = child.env("LD_PRELOAD", preloads);
 	} else {
-		command = command.env("LD_PRELOAD", preload_lib.as_os_str());
+		child = child.env("LD_PRELOAD", preload_lib.as_os_str());
 	}
 
-	let serialized = match serialize_options(args.options.iter()) {
+	let mut set_options = Vec::with_capacity(OPTIONS.len());
+
+	for option in OPTIONS {
+		if let Some(value) = args.value_of(option.name) {
+			match SetOption::parse_value(*option, value) {
+				Ok(x) => set_options.push(x),
+				Err(e) => {
+					eprintln!("{}", e);
+					std::process::exit(1);
+				}
+			}
+		}
+	}
+
+	let serialized = match serialize_options(set_options.iter()) {
 		Ok(x) => x,
 		Err(error) => {
 			eprintln!("failed to serialize CURL options: {}", error);
@@ -47,13 +72,13 @@ fn main() {
 		}
 	};
 
-	command.env("CURL_INJECT_OPT", serialized);
+	child.env("CURL_INJECT_OPT", serialized);
 
-	if args.debug {
-		command = command.env("CURL_INJECT_OPT_DEBUG", "1");
+	if debug {
+		child = child.env("CURL_INJECT_OPT_DEBUG", "1");
 	}
 
-	let error = command.exec();
+	let error = child.exec();
 	eprintln!("Failed to execute command: {}", error);
 	std::process::exit(-1);
 }
