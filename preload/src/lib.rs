@@ -1,4 +1,5 @@
 use std::ffi::CStr;
+use std::os::unix::ffi::OsStrExt;
 
 use curl_inject_opt_shared::{CURL, CURLcode, CurlEasySetOpt, CurlEasyPerform, SetOption, parse_options};
 
@@ -45,14 +46,9 @@ impl CurlInjectOpt {
 	fn init() -> Result<Self, String> {
 		let curl_easy_perform = load_next_fn!(curl_easy_perform : CurlEasyPerform);
 		let curl_easy_setopt  = load_next_fn!(curl_easy_setopt  : CurlEasySetOpt);
-		let options           = std::env::var("CURL_INJECT_OPT").expect("invalid UTF-8 in CURL_INJECT_OPT environment variable");
+		let options           = std::env::var_os("CURL_INJECT_OPT");
+		let options           = options.map(|x| parse_options(x.as_bytes()).expect("failed to parse CURL_INJECT_OPT")).unwrap_or_default();
 		let debug             = env_bool("CURL_INJECT_OPT_DEBUG");
-
-		let options = if options.is_empty() {
-			Vec::new()
-		} else {
-			parse_options(&options).expect("failed to parse CURL_INJECT_OPT")
-		};
 
 		if debug {
 			eprintln!("curl-inject-opt: debug is on");

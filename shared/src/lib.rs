@@ -1,5 +1,6 @@
 mod config;
 mod options;
+pub mod urlencode;
 
 pub use self::config::{Config, parse_config};
 pub use self::options::{Kind, Value, Meta, SetOption, OPTIONS};
@@ -11,14 +12,37 @@ pub use curl_sys::CURLcode;
 pub type CurlEasySetOpt  = extern "C" fn(handle: *mut CURL, option: CURLoption, ...) -> CURLcode;
 pub type CurlEasyPerform = extern "C" fn(handle: *mut CURL) -> CURLcode;
 
-pub fn serialize_options<'a>(options: impl Iterator<Item = &'a SetOption>) -> Result<String, String> {
-	let vec : Vec<(&str, String)> = options.map(|option| (option.name, format!("{}", option.value))).collect();
-	serde_json::to_string(&vec).map_err(|x| format!("failed to encode curl options: {}", x))
+fn encode_option_append(buffer: &mut Vec<u8>, option: &SetOption) {
+	buffer.extend(option.name.as_bytes());
+	buffer.push(b'=');
+
+	match &option.value {
+		Value::CString(x) => urlencode::url_encode_append(buffer, x.as_bytes(), urlencode::escape_comma),
+		Value::CLong(x)   => buffer.extend(format!("{}", x).as_bytes()),
+	}
 }
 
-pub fn parse_options(data: &str) -> Result<Vec<SetOption>, String> {
-	let vec : Vec<(&str, String)> = serde_json::from_str(data).map_err(|x| format!("failed to parse curl options: {}", x))?;
-	vec.into_iter().map(|(name, value)| {
-		SetOption::parse_name_value(name, &value)
-	}).collect()
+fn decode_option(data: &[u8]) -> Result<SetOption, String> {
+	let split_at = data.iter().position(|b| *b == b'=').ok_or_else(|| String::from("invalid option syntax, expected name=value"))?;
+	let name     = std::str::from_utf8(&data[..split_at]).map_err(|_| String::from("option name contains invalid UTF-8"))?;
+	let value    = urlencode::url_decode(&data[split_at + 1..]).map_err(|e| format!("failed to decode value for option {}: {}", name, e))?;
+
+	SetOption::parse_name_value(name, &value)
+}
+
+pub fn serialize_options<'a>(options: impl Iterator<Item = &'a SetOption>) -> Vec<u8> {
+	let mut buffer = Vec::new();
+	let mut first  = true;
+	for option in options {
+		if !std::mem::replace(&mut first, false) {
+			buffer.push(b',');
+		}
+		encode_option_append(&mut buffer, option);
+	}
+
+	buffer
+}
+
+pub fn parse_options(data: &[u8]) -> Result<Vec<SetOption>, String> {
+	data.split(|b| *b == b',').filter(|x| !x.is_empty()).map(decode_option).collect()
 }

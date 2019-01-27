@@ -6,6 +6,3 @@ edition = "2018"
 
 [dependencies]
 curl-sys     = "*"
-serde_json   = "*"
-serde        = "*"
-serde_derive = "*"

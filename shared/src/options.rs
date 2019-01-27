@@ -3,8 +3,6 @@ use super::{CURL, CURLcode, CURLoption, CurlEasySetOpt};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_long;
 
-use serde_derive::{Deserialize, Serialize};
-
 /// Global list of known CURL options.
 pub const OPTIONS : &[Meta] = &[
 	Meta::new("client-cert", curl_sys::CURLOPT_SSLCERT, Kind::CString, "Use a client certificate to authenticate with a remote server."),
@@ -12,7 +10,7 @@ pub const OPTIONS : &[Meta] = &[
 ];
 
 /// The possible kinds of CURL options.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum Kind {
 	CString,
 	CLong,
@@ -30,7 +28,7 @@ impl std::fmt::Display for Kind {
 /// The value for a CURL option.
 ///
 /// It can be either a null-terminated string, or a long integer as defined by C.
-#[derive(Clone, Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Value {
 	CString(CString),
 	CLong(c_long),
@@ -92,12 +90,19 @@ pub struct SetOption {
 	pub value: Value,
 }
 
+fn parse_long(bytes: &[u8]) -> Result<c_long, std::num::ParseIntError> {
+	// NOTE: from_str_radix only works on ASCII anyway.
+	// It immediately converts the string to bytes anyway.
+	let as_str = unsafe { std::str::from_utf8_unchecked(bytes) };
+	c_long::from_str_radix(as_str, 10)
+}
+
 impl SetOption {
 	/// Parse the value for an option with known metadata.
-	pub fn parse_value(meta: Meta, value: &str) -> Result<Self, String> {
+	pub fn parse_value(meta: Meta, value: &[u8]) -> Result<Self, String> {
 		let value = match meta.kind {
 			Kind::CString => Value::CString(CString::new(value).map_err(|_| format!("value for option {} contains a null byte", meta.name))?),
-			Kind::CLong   => Value::CLong(value.parse().map_err(|_| format!("invalid integer value for option {}", meta.name))?),
+			Kind::CLong   => Value::CLong(parse_long(value).map_err(|_| format!("invalid integer value for option {}", meta.name))?),
 		};
 
 		Ok(Self{name: meta.name, option: meta.option, value})
@@ -106,7 +111,7 @@ impl SetOption {
 	/// Parse an option from the name and value.
 	///
 	/// The name will be lookup up in the global OPTIONS list to retrieve the required metadata.
-	pub fn parse_name_value(name: &str, value: &str) -> Result<Self, String> {
+	pub fn parse_name_value(name: &str, value: &[u8]) -> Result<Self, String> {
 		for candidate in OPTIONS {
 			if name.eq_ignore_ascii_case(candidate.name) {
 				return Self::parse_value(*candidate, value)
