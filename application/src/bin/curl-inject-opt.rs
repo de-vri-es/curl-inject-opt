@@ -19,6 +19,7 @@ fn build_clap<'a, 'b>() -> clap::App<'a, 'b> {
 		app = app.arg(clap::Arg::with_name(option.name)
 			.long(option.name)
 			.takes_value(true)
+			.value_name("VAL")
 			.help(option.help)
 		);
 	}
