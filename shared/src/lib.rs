@@ -1,8 +1,7 @@
-mod config;
-mod options;
+pub mod config;
 pub mod url_encode;
+mod options;
 
-pub use self::config::{Config, parse_config};
 pub use self::options::{Kind, Value, Meta, SetOption, OPTIONS};
 
 pub use curl_sys::CURL;

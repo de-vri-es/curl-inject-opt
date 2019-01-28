@@ -20,16 +20,24 @@ usage() {
 	echo "  --help -h          Show this help message."
 	echo
 	echo "Parameters:"
-	echo "  PREFIX=/usr/local  Set the installation prefix."
-	echo "  LIBDIR=lib         Set the installation path for libraries."
-	echo "  BINDIR=bin         Set the installation path for binaries."
+	echo "  PREFIX=/usr/local     Set the installation prefix."
+	echo "  LIBDIR=lib            Set the installation path for libraries."
+	echo "  BINDIR=bin            Set the installation path for binaries."
+	echo "  RELY_ON_SEARCH=false  Rely on the system search path for finding the preload library."
 	echo
 	echo "If LIBDIR or BINDIR are given as relative path,"
 	echo "they are interpreted relative to PREFIX."
+	echo
+	echo "If RELY_ON_SEARCH is set to true, the preload library will be added to LD_PRELOAD"
+	echo "as just the library name. The dynamic linker will have to find the library on it's own."
+	echo "This allows the preload library to be used even with binaries that have elevated privileges"
+	echo "on some systems (such as Linux)."
+
 }
 
 parse_single_config() {
-	local arg="$1"
+	local source="$1"
+	local arg="$2"
 	if ! [[ $arg =~ ([_a-zA-Z0-9]+)=(.*) ]]; then
 		short_usage >&2
 		die "\nunrecognized argument: %s" "$arg"
@@ -41,15 +49,16 @@ parse_single_config() {
 		PREFIX) PREFIX="$value";;
 		LIBDIR) LIBDIR="$value";;
 		BINDIR) BINDIR="$value";;
+		RELY_ON_SEARCH) RELY_ON_SEARCH="$value";;
 		*)
 			short_usage >&2
-			die "\nunrecognized parameter: %s" "$name";;
+			die "\nunrecognized parameter in %s: %s" "$source" "$name";;
 	esac
 }
 
 parse_config() {
 	while read arg; do
-		parse_single_config "$arg"
+		parse_single_config "cache" "$arg"
 	done
 }
 
@@ -59,7 +68,7 @@ parse_args() {
 			usage
 			exit 0
 		fi
-		parse_single_config "$arg"
+		parse_single_config "command line" "$arg"
 	done
 }
 
@@ -68,12 +77,14 @@ cat <<EOF
 PREFIX=$PREFIX
 LIBDIR=$LIBDIR
 BINDIR=$BINDIR
+RELY_ON_SEARCH=$RELY_ON_SEARCH
 EOF
 }
 
-PREFIX="${PREFIX-/usr/local}"
-LIBDIR="${LIBDIR-lib}"
-BINDIR="${BINDIR-bin}"
+PREFIX="/usr/local"
+LIBDIR="lib"
+BINDIR="bin"
+RELY_ON_SEARCH="false"
 
 [[ -f config.cache ]] && parse_config < config.cache
 parse_args "$@"
@@ -81,6 +92,7 @@ parse_args "$@"
 printf "PREFIX: %s\n" "$PREFIX"
 printf "LIBDIR: %s\n" "$LIBDIR"
 printf "BINDIR: %s\n" "$BINDIR"
+printf "RELY_ON_SEARCH: %s\n" "$RELY_ON_SEARCH"
 
 echo "Generating config.cache"
 generate_config > config.cache

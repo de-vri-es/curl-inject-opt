@@ -1,5 +1,6 @@
-use curl_inject_opt_shared::{OPTIONS, SetOption, parse_config, serialize_options};
+use curl_inject_opt_shared::{OPTIONS, SetOption, config, serialize_options};
 use std::os::unix::ffi::OsStrExt;
+use std::path::PathBuf;
 
 fn build_clap<'a, 'b>() -> clap::App<'a, 'b> {
 	let mut app = clap::App::new("curl-inject-opt")
@@ -35,7 +36,6 @@ fn build_clap<'a, 'b>() -> clap::App<'a, 'b> {
 }
 
 fn main() {
-	let config = parse_config().expect("baked-in config does not parse");
 	let args   = build_clap().get_matches();
 	let debug  = args.is_present("debug");
 
@@ -72,7 +72,10 @@ fn main() {
 	let mut child = std::process::Command::new(&command[0]);
 	let mut child = child.args(&command[1..]);
 
-	let preload_lib = config.libdir().join("libcurl_inject_opt_preload.so");
+	let preload_lib = match config::rely_on_search() {
+		true  => PathBuf::from("libcurl_inject_opt_preload.so"),
+		false => config::libdir().join("libcurl_inject_opt_preload.so"),
+	};
 
 	if let Some(old_preload) = std::env::var_os("LD_PRELOAD") {
 		let mut preloads = std::ffi::OsString::with_capacity(preload_lib.as_os_str().len() + old_preload.len() + 1);
