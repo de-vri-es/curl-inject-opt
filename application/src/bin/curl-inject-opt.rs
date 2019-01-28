@@ -4,6 +4,7 @@ use std::os::unix::ffi::OsStrExt;
 fn build_clap<'a, 'b>() -> clap::App<'a, 'b> {
 	let mut app = clap::App::new("curl-inject-opt")
 		.setting(clap::AppSettings::TrailingVarArg)
+		.setting(clap::AppSettings::DeriveDisplayOrder)
 		.setting(clap::AppSettings::ColoredHelp)
 		.about("Inject options into CURL requests for a subcommand.")
 		.arg(clap::Arg::with_name("debug")

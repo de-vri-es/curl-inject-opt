@@ -3,10 +3,29 @@ use super::{CURL, CURLcode, CURLoption, CurlEasySetOpt};
 use std::ffi::{CStr, CString};
 use std::os::raw::c_long;
 
+macro_rules! curl_option {
+	( $name:literal, $curl_name:ident, $type:expr, $help:literal ) => {
+		Meta::new($name, curl_sys::$curl_name, $type, concat!(stringify!($curl_name), " - ", $help))
+	};
+}
+
 /// Global list of known CURL options.
 pub const OPTIONS : &[Meta] = &[
-	Meta::new("client-cert", curl_sys::CURLOPT_SSLCERT, Kind::CString, "Use a client certificate to authenticate with a remote server."),
-	Meta::new("client-key",  curl_sys::CURLOPT_SSLKEY,  Kind::CString, "Use the given key with the client certificate. Useful if the key isn't embedded in the certificate."),
+	curl_option!("verbose",          CURLOPT_VERBOSE,         Kind::CLong,   "Set to 1 to enable verbose output from CURL."),
+
+	curl_option!("proxy",            CURLOPT_PROXY,           Kind::CString, "Set the proxy to use."),
+	curl_option!("proxy-port",       CURLOPT_PROXYPORT,       Kind::CLong,   "Set the proxy port."),
+	curl_option!("proxy-type",       CURLOPT_PROXYTYPE,       Kind::CString, "Set the proxy type."),
+	curl_option!("proxy-tunnel",     CURLOPT_HTTPPROXYTUNNEL, Kind::CLong,   "Set to 1 to use CONNECT to tunnel through a configured HTTP proxy."),
+	curl_option!("no-proxy",         CURLOPT_NOPROXY,         Kind::CString, "Set hosts to contact directly, bypassing the proxy settings."),
+
+	curl_option!("client-cert",      CURLOPT_SSLCERT,         Kind::CString, "Use a client certificate to authenticate with a remote server."),
+	curl_option!("client-cert-type", CURLOPT_SSLCERTTYPE,     Kind::CString, "Specify the type of the client certificate (normally defaults to PEM)."),
+	curl_option!("client-key",       CURLOPT_SSLKEY,          Kind::CString, "Use a separate file as key with the client certificate."),
+
+	//curl_option!("proxy-client-cert",      CURLOPT_PROXY_SSLCERT,      Kind::CString, "Use a client certificate to authenticate with the proxy."),
+	//curl_option!("proxy-client-cert-type", CURLOPT_PROXY_SSLCERTTYPE,  Kind::CString, "Specify the type of the proxy client certificate."),
+	//curl_option!("proxy-client-key",       CURLOPT_PROXY_SSLKEY,       Kind::CString, "Use the given key with the proxy client certificate."),
 ];
 
 /// The possible kinds of CURL options.
