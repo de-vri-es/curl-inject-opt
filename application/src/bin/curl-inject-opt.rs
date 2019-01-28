@@ -2,41 +2,8 @@ use curl_inject_opt_shared::{OPTIONS, SetOption, config, serialize_options};
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 
-fn build_clap<'a, 'b>() -> clap::App<'a, 'b> {
-	let mut app = clap::App::new("curl-inject-opt")
-		.setting(clap::AppSettings::TrailingVarArg)
-		.setting(clap::AppSettings::DeriveDisplayOrder)
-		.setting(clap::AppSettings::ColoredHelp)
-		.about("Inject options into CURL requests for a subcommand.")
-		.arg(clap::Arg::with_name("debug")
-			.long("--debug")
-			.short("d")
-			.help("Enable some debug printing in the preloaded library.")
-		)
-		.arg(clap::Arg::with_name("print-env")
-			.long("--print-env")
-			.help("Print the environment variables and exit without running a command.")
-		)
-		.arg(clap::Arg::with_name("COMMAND")
-			.required_unless("print-env")
-			.multiple(true)
-			.help("The command to run.")
-		);
-
-	for option in OPTIONS {
-		app = app.arg(clap::Arg::with_name(option.name)
-			.long(option.name)
-			.takes_value(true)
-			.value_name("VAL")
-			.help(option.help)
-		);
-	}
-
-	app
-}
-
 fn main() {
-	let args   = build_clap().get_matches();
+	let args   = curl_inject_opt::build_cli().get_matches();
 	let debug  = args.is_present("debug");
 
 	// Collect CURL options to set.

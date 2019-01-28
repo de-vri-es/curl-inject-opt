@@ -9,6 +9,7 @@ pub struct Config {
 	pub raw_prefix: &'static str,
 	pub raw_libdir: &'static str,
 	pub raw_bindir: &'static str,
+	pub raw_datadir: &'static str,
 	pub rely_on_search: bool,
 }
 
@@ -23,6 +24,10 @@ impl Config {
 
 	pub fn bindir(&self) -> PathBuf {
 		self.prefix().join(self.raw_bindir)
+	}
+
+	pub fn datadir(&self) -> PathBuf {
+		self.prefix().join(self.raw_datadir)
 	}
 
 	pub fn rely_on_search(&self) -> bool {
@@ -41,9 +46,10 @@ fn bool_value(value: &str) -> Result<bool, String> {
 }
 
 pub fn parse_config() -> Result<Config, String> {
-	let mut raw_prefix = "/usr/local";
-	let mut raw_libdir = "lib";
-	let mut raw_bindir = "bin";
+	let mut raw_prefix     = "/usr/local";
+	let mut raw_libdir     = "lib";
+	let mut raw_bindir     = "bin";
+	let mut raw_datadir    = "share";
 	let mut rely_on_search = false;
 
 	for (i, line) in RAW_CONFIG.lines().enumerate() {
@@ -61,9 +67,10 @@ pub fn parse_config() -> Result<Config, String> {
 		let value = (&line[split_at + 1..]).trim();
 
 		match key {
-			"PREFIX" => raw_prefix = value,
-			"LIBDIR" => raw_libdir = value,
-			"BINDIR" => raw_bindir = value,
+			"PREFIX"  => raw_prefix  = value,
+			"LIBDIR"  => raw_libdir  = value,
+			"BINDIR"  => raw_bindir  = value,
+			"DATADIR" => raw_datadir = value,
 			"RELY_ON_SEARCH" => rely_on_search = bool_value(value).map_err(|e| format!("invalid value for {}: {}", key, e))?,
 			_ => return Err(format!("unknown parameter on line {}: {}", i, key))
 		}
@@ -73,6 +80,7 @@ pub fn parse_config() -> Result<Config, String> {
 		raw_prefix,
 		raw_libdir,
 		raw_bindir,
+		raw_datadir,
 		rely_on_search
 	})
 }
@@ -82,12 +90,14 @@ fn main() {
 	let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").expect("failed to get OUT_DIR from environment"));
 	let mut config_out = std::fs::File::create(out_dir.join("config.rs")).expect(&format!("failed to open {} for writing", out_dir.join("config.rs").display()));
 
-	writeln!(config_out, "pub const PREFIX : &str = {:#?};", config.raw_prefix).unwrap();
-	writeln!(config_out, "pub const LIBDIR : &str = {:#?};", config.raw_libdir).unwrap();
-	writeln!(config_out, "pub const BINDIR : &str = {:#?};", config.raw_bindir).unwrap();
-	writeln!(config_out, "pub const LIBDIR_RESOLVED : &str = {:#?};", config.libdir()).unwrap();
-	writeln!(config_out, "pub const BINDIR_RESOLVED : &str = {:#?};", config.bindir()).unwrap();
-	writeln!(config_out, "pub const RELY_ON_SEARCH : bool = {:#?};",  config.rely_on_search()).unwrap();
+	writeln!(config_out, "pub const PREFIX           : &str = {:#?};", config.raw_prefix).unwrap();
+	writeln!(config_out, "pub const LIBDIR           : &str = {:#?};", config.raw_libdir).unwrap();
+	writeln!(config_out, "pub const BINDIR           : &str = {:#?};", config.raw_bindir).unwrap();
+	writeln!(config_out, "pub const DATADIR          : &str = {:#?};", config.raw_datadir).unwrap();
+	writeln!(config_out, "pub const LIBDIR_RESOLVED  : &str = {:#?};", config.libdir()).unwrap();
+	writeln!(config_out, "pub const BINDIR_RESOLVED  : &str = {:#?};", config.bindir()).unwrap();
+	writeln!(config_out, "pub const DATADIR_RESOLVED : &str = {:#?};", config.datadir()).unwrap();
+	writeln!(config_out, "pub const RELY_ON_SEARCH   : bool = {:#?};", config.rely_on_search()).unwrap();
 
 	eprintln!("OUT_DIR: {}", out_dir.display());
 }

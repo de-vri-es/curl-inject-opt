@@ -6,4 +6,4 @@ all:
 	cargo build --release
 
 install: all
-	@./target/release/curl-inject-opt-install --destdir "${DESTDIR}"
+	@./target/release/install --destdir "${DESTDIR}" --bash --zsh --fish

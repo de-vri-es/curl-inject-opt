@@ -23,15 +23,15 @@ usage() {
 	echo "  PREFIX=/usr/local     Set the installation prefix."
 	echo "  LIBDIR=lib            Set the installation path for libraries."
 	echo "  BINDIR=bin            Set the installation path for binaries."
+	echo "  DATADIR=share         Set the installation path for data files."
 	echo "  RELY_ON_SEARCH=false  Rely on the system search path for finding the preload library."
 	echo
-	echo "If LIBDIR or BINDIR are given as relative path,"
-	echo "they are interpreted relative to PREFIX."
+	echo "If LIBDIR, BINDIR or DATADIR are given as relative path, they are interpreted relative to PREFIX."
 	echo
 	echo "If RELY_ON_SEARCH is set to true, the preload library will be added to LD_PRELOAD"
-	echo "as just the library name. The dynamic linker will have to find the library on it's own."
-	echo "This allows the preload library to be used even with binaries that have elevated privileges"
-	echo "on some systems (such as Linux)."
+	echo "as \"libcurl_inject_opt.so\" without absolute path. The dynamic linker will have"
+	echo "to find the library on it's own. This allows the preload library to be used even"
+	echo "with binaries that have elevated privileges on some systems (such as Linux)."
 
 }
 
@@ -46,9 +46,10 @@ parse_single_config() {
 	name="${BASH_REMATCH[1]}"
 	value="${BASH_REMATCH[2]}"
 	case "$name" in
-		PREFIX) PREFIX="$value";;
-		LIBDIR) LIBDIR="$value";;
-		BINDIR) BINDIR="$value";;
+		PREFIX)  PREFIX="$value";;
+		LIBDIR)  LIBDIR="$value";;
+		BINDIR)  BINDIR="$value";;
+		DATADIR) DATADIR="$value";;
 		RELY_ON_SEARCH) RELY_ON_SEARCH="$value";;
 		*)
 			short_usage >&2
@@ -77,6 +78,7 @@ cat <<EOF
 PREFIX=$PREFIX
 LIBDIR=$LIBDIR
 BINDIR=$BINDIR
+DATADIR=$DATADIR
 RELY_ON_SEARCH=$RELY_ON_SEARCH
 EOF
 }
@@ -84,14 +86,16 @@ EOF
 PREFIX="/usr/local"
 LIBDIR="lib"
 BINDIR="bin"
+DATADIR="share"
 RELY_ON_SEARCH="false"
 
 [[ -f config.cache ]] && parse_config < config.cache
 parse_args "$@"
 
-printf "PREFIX: %s\n" "$PREFIX"
-printf "LIBDIR: %s\n" "$LIBDIR"
-printf "BINDIR: %s\n" "$BINDIR"
+printf "PREFIX:  %s\n" "$PREFIX"
+printf "LIBDIR:  %s\n" "$LIBDIR"
+printf "BINDIR:  %s\n" "$BINDIR"
+printf "DATADIR: %s\n" "$DATADIR"
 printf "RELY_ON_SEARCH: %s\n" "$RELY_ON_SEARCH"
 
 echo "Generating config.cache"

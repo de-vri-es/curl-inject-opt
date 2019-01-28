@@ -16,6 +16,10 @@ pub fn bindir() -> &'static Path {
 	Path::new(raw::BINDIR_RESOLVED)
 }
 
+pub fn datadir() -> &'static Path {
+	Path::new(raw::DATADIR_RESOLVED)
+}
+
 pub fn rely_on_search() -> bool {
 	raw::RELY_ON_SEARCH
 }
@@ -30,4 +34,8 @@ pub fn libdir_raw() -> &'static str {
 
 pub fn bindir_raw() -> &'static str {
 	raw::BINDIR
+}
+
+pub fn datadir_raw() -> &'static str {
+	raw::DATADIR
 }

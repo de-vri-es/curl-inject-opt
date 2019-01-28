@@ -9,8 +9,17 @@ use ansi_term::Colour::{Red, Green};
 #[structopt(about = "Install the curl-inject-opt binary and preload library.", author = "")]
 #[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
 struct Args {
-	#[structopt(long = "destdir")]
+	#[structopt(long = "destdir", help = "Install files to a fake root (generally used for packaging).")]
 	destdir: String,
+
+	#[structopt(long = "bash", help = "Install bash completion.")]
+	bash: bool,
+
+	#[structopt(long = "zsh", help = "Install zsh completion.")]
+	zsh: bool,
+
+	#[structopt(long = "fish", help = "Install fish completion.")]
+	fish: bool,
 }
 
 fn concat_paths(a: impl AsRef<Path>, b: impl AsRef<Path>) -> PathBuf {
@@ -60,6 +69,11 @@ fn install_file(mode: u32, source: impl AsRef<Path>, dest_dir: impl AsRef<Path>)
 	Ok(())
 }
 
+fn make_dir(path: impl AsRef<Path>) -> Result<(), String> {
+	let path = path.as_ref();
+	std::fs::create_dir_all(path).map_err(|e| format!("Failed to create directory: {}: {}", path.display(), e))
+}
+
 fn install() -> Result<(), String> {
 	let args = Args::from_args();
 
@@ -67,12 +81,36 @@ fn install() -> Result<(), String> {
 	let destdir = cwd.join(args.destdir);
 	let libdir  = concat_paths(&destdir, config::libdir());
 	let bindir  = concat_paths(&destdir, config::bindir());
+	let datadir = concat_paths(&destdir, config::datadir());
+	let bashdir = datadir.join("bash-completion/completions");
+	let zshdir  = datadir.join("zsh/site-functions");
+	let fishdir = datadir.join("fish/vendor_completions.d");
 
-	std::fs::create_dir_all(&libdir).map_err(|e| format!("Failed to create directory: {}: {}", libdir.display(), e))?;
-	std::fs::create_dir_all(&bindir).map_err(|e| format!("Failed to create directory: {}: {}", bindir.display(), e))?;
+	let mut cli = curl_inject_opt::build_cli();
 
-	install_file(0o755, "target/release/curl-inject-opt",               bindir)?;
-	install_file(0o755, "target/release/libcurl_inject_opt_preload.so", libdir)?;
+	make_dir(&libdir)?;
+	make_dir(&bindir)?;
+
+	install_file(0o755, "target/release/curl-inject-opt",               &bindir)?;
+	install_file(0o755, "target/release/libcurl_inject_opt_preload.so", &libdir)?;
+
+	if args.bash {
+		make_dir(&bashdir)?;
+		cli.gen_completions("curl-inject-opt", clap::Shell::Bash, &bashdir);
+		eprintln!("{} {}", Green.bold().paint("  Installing"), bashdir.join("curl-inject-opt.bash").display());
+	}
+
+	if args.zsh {
+		make_dir(&zshdir)?;
+		cli.gen_completions("curl-inject-opt", clap::Shell::Zsh, &zshdir);
+		eprintln!("{} {}", Green.bold().paint("  Installing"), zshdir.join("_curl-inject-opt").display());
+	}
+
+	if args.fish {
+		make_dir(&fishdir)?;
+		cli.gen_completions("curl-inject-opt", clap::Shell::Fish, &fishdir);
+		eprintln!("{} {}", Green.bold().paint("  Installing"), fishdir.join("curl-inject-opt.fish").display());
+	}
 
 	Ok(())
 }
