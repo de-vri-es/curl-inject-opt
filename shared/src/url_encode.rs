@@ -2,7 +2,7 @@ pub fn escape_comma(byte: u8) -> bool {
 	byte == b',' || byte == b'%'
 }
 
-pub fn url_encode_append(buffer: &mut Vec<u8>, data: &[u8], should_escape: impl Fn(u8) -> bool) {
+pub fn encode_append(buffer: &mut Vec<u8>, data: &[u8], should_escape: impl Fn(u8) -> bool) {
 	let escape_count = data.iter().filter(|byte| should_escape(**byte)).count();
 	buffer.reserve(data.len() + escape_count * 2);
 
@@ -17,13 +17,13 @@ pub fn url_encode_append(buffer: &mut Vec<u8>, data: &[u8], should_escape: impl 
 	}
 }
 
-pub fn url_encode(data: &[u8], should_escape: impl Fn(u8) -> bool) -> Vec<u8> {
+pub fn encode(data: &[u8], should_escape: impl Fn(u8) -> bool) -> Vec<u8> {
 	let mut buffer = Vec::new();
-	url_encode_append(&mut buffer, data, should_escape);
+	encode_append(&mut buffer, data, should_escape);
 	buffer
 }
 
-pub fn url_decode_append(buffer: &mut Vec<u8>, data: &[u8]) -> Result<(), String> {
+pub fn decode_append(buffer: &mut Vec<u8>, data: &[u8]) -> Result<(), String> {
 	buffer.reserve(data.len());
 
 	let mut i = 0;
@@ -43,9 +43,9 @@ pub fn url_decode_append(buffer: &mut Vec<u8>, data: &[u8]) -> Result<(), String
 	Ok(())
 }
 
-pub fn url_decode(data: &[u8]) -> Result<Vec<u8>, String> {
+pub fn decode(data: &[u8]) -> Result<Vec<u8>, String> {
 	let mut buffer = Vec::new();
-	url_decode_append(&mut buffer, data)?;
+	decode_append(&mut buffer, data)?;
 	Ok(buffer)
 }
 
@@ -72,15 +72,15 @@ mod test {
 
 	#[test]
 	fn test_urlencode() {
-		assert_eq!(&url_encode(b",foo,bar,",       escape_comma), b"%2Cfoo%2Cbar%2C");
-		assert_eq!(&url_encode(b"%2Cfoo%2Cbar%2C", escape_comma), b"%252Cfoo%252Cbar%252C");
-		assert_eq!(&url_encode(b"%,foo%,%bar,%", escape_comma),   b"%25%2Cfoo%25%2C%25bar%2C%25");
+		assert_eq!(&encode(b",foo,bar,",       escape_comma), b"%2Cfoo%2Cbar%2C");
+		assert_eq!(&encode(b"%2Cfoo%2Cbar%2C", escape_comma), b"%252Cfoo%252Cbar%252C");
+		assert_eq!(&encode(b"%,foo%,%bar,%", escape_comma),   b"%25%2Cfoo%25%2C%25bar%2C%25");
 	}
 
 	#[test]
 	fn test_urldecode() {
-		assert_eq!(&url_decode(b"%2Cfoo%2Cbar%2C").unwrap(),             b",foo,bar,");
-		assert_eq!(&url_decode(b"%252Cfoo%252Cbar%252C").unwrap(),       b"%2Cfoo%2Cbar%2C");
-		assert_eq!(&url_decode(b"%25%2Cfoo%25%2C%25bar%2C%25").unwrap(), b"%,foo%,%bar,%");
+		assert_eq!(&decode(b"%2Cfoo%2Cbar%2C").unwrap(),             b",foo,bar,");
+		assert_eq!(&decode(b"%252Cfoo%252Cbar%252C").unwrap(),       b"%2Cfoo%2Cbar%2C");
+		assert_eq!(&decode(b"%25%2Cfoo%25%2C%25bar%2C%25").unwrap(), b"%,foo%,%bar,%");
 	}
 }

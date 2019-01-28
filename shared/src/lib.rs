@@ -1,6 +1,6 @@
 mod config;
 mod options;
-pub mod urlencode;
+pub mod url_encode;
 
 pub use self::config::{Config, parse_config};
 pub use self::options::{Kind, Value, Meta, SetOption, OPTIONS};
@@ -17,7 +17,7 @@ fn encode_option_append(buffer: &mut Vec<u8>, option: &SetOption) {
 	buffer.push(b'=');
 
 	match &option.value {
-		Value::CString(x) => urlencode::url_encode_append(buffer, x.as_bytes(), urlencode::escape_comma),
+		Value::CString(x) => url_encode::encode_append(buffer, x.as_bytes(), url_encode::escape_comma),
 		Value::CLong(x)   => buffer.extend(format!("{}", x).as_bytes()),
 	}
 }
@@ -25,7 +25,7 @@ fn encode_option_append(buffer: &mut Vec<u8>, option: &SetOption) {
 fn decode_option(data: &[u8]) -> Result<SetOption, String> {
 	let split_at = data.iter().position(|b| *b == b'=').ok_or_else(|| String::from("invalid option syntax, expected name=value"))?;
 	let name     = std::str::from_utf8(&data[..split_at]).map_err(|_| String::from("option name contains invalid UTF-8"))?;
-	let value    = urlencode::url_decode(&data[split_at + 1..]).map_err(|e| format!("failed to decode value for option {}: {}", name, e))?;
+	let value    = url_encode::decode(&data[split_at + 1..]).map_err(|e| format!("failed to decode value for option {}: {}", name, e))?;
 
 	SetOption::parse_name_value(name, &value)
 }
