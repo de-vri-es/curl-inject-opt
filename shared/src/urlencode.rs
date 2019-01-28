@@ -65,3 +65,22 @@ fn u8_to_ascii_hex_digit(byte: u8) -> Option<u8> {
 		_ => None,
 	}
 }
+
+#[cfg(test)]
+mod test {
+	use super::*;
+
+	#[test]
+	fn test_urlencode() {
+		assert_eq!(&url_encode(b",foo,bar,",       escape_comma), b"%2Cfoo%2Cbar%2C");
+		assert_eq!(&url_encode(b"%2Cfoo%2Cbar%2C", escape_comma), b"%252Cfoo%252Cbar%252C");
+		assert_eq!(&url_encode(b"%,foo%,%bar,%", escape_comma),   b"%25%2Cfoo%25%2C%25bar%2C%25");
+	}
+
+	#[test]
+	fn test_urldecode() {
+		assert_eq!(&url_decode(b"%2Cfoo%2Cbar%2C").unwrap(),             b",foo,bar,");
+		assert_eq!(&url_decode(b"%252Cfoo%252Cbar%252C").unwrap(),       b"%2Cfoo%2Cbar%2C");
+		assert_eq!(&url_decode(b"%25%2Cfoo%25%2C%25bar%2C%25").unwrap(), b"%,foo%,%bar,%");
+	}
+}
