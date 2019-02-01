@@ -50,6 +50,8 @@ pub fn build_cli<'a, 'b>() -> clap::App<'a, 'b> {
 			.long(option.name)
 			.takes_value(true)
 			.value_name("VAL")
+			.multiple(true)
+			.number_of_values(1)
 			.help(option.help)
 		);
 	}
@@ -58,7 +60,7 @@ pub fn build_cli<'a, 'b>() -> clap::App<'a, 'b> {
 }
 
 pub fn extract_curl_options(matches: &clap::ArgMatches) -> Result<Vec<SetOption>, String> {
-	// Collect all occurences of curl options into a vector with the clap index, so we can sort again.
+	// Collect all occurences of curl options into a vector with the clap index, so we can sort on it.
 	// Clap stores matches in a hash map, so we have saner way to do this.
 
 	let mut options : Vec<_> = OPTIONS.iter().filter_map(|option| {
