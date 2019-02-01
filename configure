@@ -23,8 +23,7 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-cd "$(dirname "$0")"
+PROJECT_ROOT="$(cd "$(dirname "$0")"; pwd)"
 
 die() {
 	local pattern="$1"
@@ -62,7 +61,7 @@ usage() {
 parse_single_config() {
 	local source="$1"
 	local arg="$2"
-	if ! [[ $arg =~ ([_a-zA-Z0-9]+)=(.*) ]]; then
+	if ! [[ $arg =~ ([_a-zA-Z0-9]+)\ *=\ *(.*) ]]; then
 		short_usage >&2
 		die "\nunrecognized argument: %s" "$arg"
 	fi
@@ -99,11 +98,18 @@ parse_args() {
 
 generate_config() {
 cat <<EOF
-PREFIX=$PREFIX
-LIBDIR=$LIBDIR
-BINDIR=$BINDIR
-DATADIR=$DATADIR
-RELY_ON_SEARCH=$RELY_ON_SEARCH
+PREFIX  = $PREFIX
+LIBDIR  = $LIBDIR
+BINDIR  = $BINDIR
+DATADIR = $DATADIR
+RELY_ON_SEARCH = $RELY_ON_SEARCH
+EOF
+}
+
+generate_make_config() {
+cat <<EOF
+PROJECT_ROOT = $PROJECT_ROOT
+BUILD_DIR    = $PWD
 EOF
 }
 
@@ -124,3 +130,10 @@ printf "RELY_ON_SEARCH: %s\n" "$RELY_ON_SEARCH"
 
 echo "Generating config.cache"
 generate_config > config.cache
+
+if [[ $PWD != $PROJECT_ROOT ]]; then
+	echo "Generating config.make"
+	generate_make_config > config.make
+	echo "Copying Makefile"
+	cp "$PROJECT_ROOT/Makefile" Makefile
+fi

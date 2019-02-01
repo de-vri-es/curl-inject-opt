@@ -26,31 +26,57 @@
 use std::path::{Path, PathBuf};
 use std::io::Write;
 
-const RAW_CONFIG : &str = include_str!("../config.cache");
+trait SliceExt<T>: Sized {
+	fn trim_left(self, fun: impl FnMut(&T) -> bool) -> Self;
+
+	fn trim_right(self, fun: impl FnMut(&T) -> bool) -> Self;
+
+	fn trim(self, fun: impl Copy + FnMut(&T) -> bool) -> Self {
+		self.trim_left(fun).trim_right(fun)
+	}
+}
+
+impl<'a, T> SliceExt<T> for &'a [T] {
+	fn trim_left(self, mut fun: impl FnMut(&T) -> bool) -> Self {
+		if let Some(position) = self.iter().position(|b| !fun(b)) {
+			&self[position..]
+		} else {
+			&self[0..0]
+		}
+	}
+
+	fn trim_right(self, mut fun: impl FnMut(&T) -> bool) -> Self {
+		if let Some(position) = self.iter().rposition(|b| !fun(b)) {
+			&self[..=position]
+		} else {
+			&self[0..0]
+		}
+	}
+}
 
 pub struct Config {
-	pub raw_prefix: &'static str,
-	pub raw_libdir: &'static str,
-	pub raw_bindir: &'static str,
-	pub raw_datadir: &'static str,
+	pub raw_prefix: String,
+	pub raw_libdir: String,
+	pub raw_bindir: String,
+	pub raw_datadir: String,
 	pub rely_on_search: bool,
 }
 
 impl Config {
-	pub fn prefix(&self) -> &'static Path {
-		Path::new(self.raw_prefix)
+	pub fn prefix(&self) -> &Path {
+		&Path::new(&self.raw_prefix)
 	}
 
 	pub fn libdir(&self) -> PathBuf {
-		self.prefix().join(self.raw_libdir)
+		self.prefix().join(&self.raw_libdir)
 	}
 
 	pub fn bindir(&self) -> PathBuf {
-		self.prefix().join(self.raw_bindir)
+		self.prefix().join(&self.raw_bindir)
 	}
 
 	pub fn datadir(&self) -> PathBuf {
-		self.prefix().join(self.raw_datadir)
+		self.prefix().join(&self.raw_datadir)
 	}
 
 	pub fn rely_on_search(&self) -> bool {
@@ -58,52 +84,68 @@ impl Config {
 	}
 }
 
-fn bool_value(value: &str) -> Result<bool, String> {
-	if value == "0" || value.eq_ignore_ascii_case("false") || value.eq_ignore_ascii_case("no")  || value.eq_ignore_ascii_case("off") {
+fn bool_value(value: &[u8]) -> Result<bool, String> {
+	if value == b"0" || value.eq_ignore_ascii_case(b"false") || value.eq_ignore_ascii_case(b"no")  || value.eq_ignore_ascii_case(b"off") {
 		Ok(false)
-	} else if value == "1" || value.eq_ignore_ascii_case("true") || value.eq_ignore_ascii_case("yes")  || value.eq_ignore_ascii_case("on") {
+	} else if value == b"1" || value.eq_ignore_ascii_case(b"true") || value.eq_ignore_ascii_case(b"yes")  || value.eq_ignore_ascii_case(b"on") {
 		Ok(true)
 	} else {
 		Err(String::from("invalid boolean value"))
 	}
 }
 
+fn read_file(path: impl AsRef<Path>) -> Result<Vec<u8>, String> {
+	let path = path.as_ref();
+	println!("cargo:rerun-if-changed={}", path.display());
+	std::fs::read(path).map_err(|e| format!("failed to read file: {}: {}", path.display(), e))
+}
+
+fn get_env(name: &str) -> Result<String, String> {
+	println!("cargo:rerun-if-env-changed={}", name);
+	std::env::var(name).map_err(|e| format!("failed to get environment variable: {}: {}", name, e))
+}
+
 pub fn parse_config() -> Result<Config, String> {
-	let mut raw_prefix     = "/usr/local";
-	let mut raw_libdir     = "lib";
-	let mut raw_bindir     = "bin";
-	let mut raw_datadir    = "share";
+	let mut raw_prefix  : &[u8] = b"/usr/local";
+	let mut raw_libdir  : &[u8] = b"lib";
+	let mut raw_bindir  : &[u8] = b"bin";
+	let mut raw_datadir : &[u8] = b"share";
 	let mut rely_on_search = false;
 
-	for (i, line) in RAW_CONFIG.lines().enumerate() {
-		let line = line.trim();
-		if line.starts_with("#") {
+	let raw_config = read_file(get_env("CONFIG_CACHE")?)?;
+
+	for (i, line) in raw_config.split(|b| *b == b'\n').enumerate() {
+		let line = line.trim(|b| *b == b' ');
+		if line.is_empty() || line.starts_with(b"#") {
 			continue;
 		}
 
-		let split_at = match line.find("=") {
+		println!("{}: {}", i, String::from_utf8_lossy(line));
+
+
+		let split_at = match line.iter().position(|b| *b == b'=') {
 			Some(x) => x,
-			None    => return Err(format!("invalid config value on line {}, expected PARAM=value", i)),
+			None    => return Err(format!("invalid config value on line {}, expected PARAM=value, got {}", i, String::from_utf8_lossy(line))),
 		};
 
-		let key   = (&line[..split_at]).trim();
-		let value = (&line[split_at + 1..]).trim();
+		let key   = (&line[..split_at]).trim(|b| *b == b' ');
+		let value = (&line[split_at + 1..]).trim(|b| *b == b' ');
 
 		match key {
-			"PREFIX"  => raw_prefix  = value,
-			"LIBDIR"  => raw_libdir  = value,
-			"BINDIR"  => raw_bindir  = value,
-			"DATADIR" => raw_datadir = value,
-			"RELY_ON_SEARCH" => rely_on_search = bool_value(value).map_err(|e| format!("invalid value for {}: {}", key, e))?,
-			_ => return Err(format!("unknown parameter on line {}: {}", i, key))
+			b"PREFIX"  => raw_prefix  = value,
+			b"LIBDIR"  => raw_libdir  = value,
+			b"BINDIR"  => raw_bindir  = value,
+			b"DATADIR" => raw_datadir = value,
+			b"RELY_ON_SEARCH" => rely_on_search = bool_value(value).map_err(|_| format!("invalid boolean value for {}", std::str::from_utf8(key).unwrap()))?,
+			_ => return Err(format!("unknown parameter on line {}: {}", i, String::from_utf8_lossy(key)))
 		}
 	}
 
 	Ok(Config {
-		raw_prefix,
-		raw_libdir,
-		raw_bindir,
-		raw_datadir,
+		raw_prefix:  String::from_utf8(raw_prefix.to_vec()).map_err(|_| format!("PREFIX contains invalid UTF-8"))?,
+		raw_libdir:  String::from_utf8(raw_libdir.to_vec()).map_err(|_| format!("LIBDIR contains invalid UTF-8"))?,
+		raw_bindir:  String::from_utf8(raw_bindir.to_vec()).map_err(|_| format!("BINDIR contains invalid UTF-8"))?,
+		raw_datadir: String::from_utf8(raw_datadir.to_vec()).map_err(|_| format!("DATADIR contains invalid UTF-8"))?,
 		rely_on_search
 	})
 }
