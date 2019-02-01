@@ -26,8 +26,15 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 
 fn main() {
-	let args   = curl_inject_opt::build_cli().get_matches();
-	let debug  = args.is_present("debug");
+	let args       = curl_inject_opt::build_cli().get_matches();
+	let print_env  = args.is_present("print-env");
+	let debug      = args.is_present("debug");
+	let no_inherit = args.is_present("no-inherit");
+
+	let preload_lib = match config::rely_on_search() {
+		true  => PathBuf::from("libcurl_inject_opt_preload.so"),
+		false => config::libdir().join("libcurl_inject_opt_preload.so"),
+	};
 
 	// Collect CURL options to set.
 	let set_options = match curl_inject_opt::extract_curl_options(&args) {
@@ -41,14 +48,16 @@ fn main() {
 	// Serialize CURL options for passing through the environment.
 	let serialized_options = serialize_options(set_options.iter());
 
-	if args.is_present("print-env") {
+	if print_env {
 		if debug {
 			println!("CURL_INJECT_OPT_DEBUG=1");
+		}
+		if no_inherit {
+			println!("CURL_INJECT_OPT_NO_INHERIT={}", preload_lib.display());
 		}
 		println!("CURL_INJECT_OPT={}", String::from_utf8_lossy(&serialized_options));
 		return;
 	}
-
 
 	use std::os::unix::process::CommandExt;
 
@@ -56,27 +65,28 @@ fn main() {
 	let mut child = std::process::Command::new(&command[0]);
 	let mut child = child.args(&command[1..]);
 
-	let preload_lib = match config::rely_on_search() {
-		true  => PathBuf::from("libcurl_inject_opt_preload.so"),
-		false => config::libdir().join("libcurl_inject_opt_preload.so"),
-	};
-
 	if let Some(old_preload) = std::env::var_os("LD_PRELOAD") {
-		let mut preloads = std::ffi::OsString::with_capacity(preload_lib.as_os_str().len() + old_preload.len() + 1);
-		preloads.push(preload_lib.as_os_str());
-		preloads.push(":");
-		preloads.push(old_preload);
-		child = child.env("LD_PRELOAD", preloads);
+		let new_preload = match std::env::join_paths(std::iter::once(preload_lib.clone()).chain(std::env::split_paths(&old_preload))) {
+			Ok(x) => x,
+			Err(_) => {
+				println!("preload library path contains separator: {}", preload_lib.display());
+				std::process::exit(1);
+			}
+		};
+		child = child.env("LD_PRELOAD", new_preload);
 	} else {
 		child = child.env("LD_PRELOAD", preload_lib.as_os_str());
 	}
 
-
-	child.env("CURL_INJECT_OPT", std::ffi::OsStr::from_bytes(&serialized_options));
-
 	if debug {
 		child = child.env("CURL_INJECT_OPT_DEBUG", "1");
 	}
+
+	if no_inherit {
+		child = child.env("CURL_INJECT_OPT_NO_INHERIT", preload_lib);
+	}
+
+	child.env("CURL_INJECT_OPT", std::ffi::OsStr::from_bytes(&serialized_options));
 
 	let error = child.exec();
 	eprintln!("Failed to execute command: {}", error);

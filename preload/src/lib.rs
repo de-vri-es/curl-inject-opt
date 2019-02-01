@@ -69,9 +69,16 @@ impl CurlInjectOpt {
 	fn init() -> Result<Self, String> {
 		let curl_easy_perform = load_next_fn!(curl_easy_perform : CurlEasyPerform);
 		let curl_easy_setopt  = load_next_fn!(curl_easy_setopt  : CurlEasySetOpt);
+		let debug             = env_bool("CURL_INJECT_OPT_DEBUG");
+		let no_inherit        = std::env::var_os("CURL_INJECT_OPT_NO_INHERIT");
 		let options           = std::env::var_os("CURL_INJECT_OPT");
 		let options           = options.map(|x| parse_options(x.as_bytes()).expect("failed to parse CURL_INJECT_OPT")).unwrap_or_default();
-		let debug             = env_bool("CURL_INJECT_OPT_DEBUG");
+
+		if let Some(path) = no_inherit {
+			if let Some(preload) = std::env::var_os("LD_PRELOAD") {
+				std::env::set_var("LD_PRELOAD", std::env::join_paths(std::env::split_paths(&preload).filter(|x| *x != path)).unwrap());
+			}
+		}
 
 		if debug {
 			eprintln!("curl-inject-opt: debug is on");
