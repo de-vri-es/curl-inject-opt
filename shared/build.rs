@@ -105,6 +105,15 @@ fn get_env(name: &str) -> Result<String, String> {
 	std::env::var(name).map_err(|e| format!("failed to get environment variable: {}: {}", name, e))
 }
 
+fn get_env_or(name: &str, default: &str) -> Result<String, String> {
+	println!("cargo:rerun-if-env-changed={}", name);
+	let value = match std::env::var_os(name) {
+		Some(x) => x,
+		None    => return Ok(String::from(default)),
+	};
+	value.into_string().map_err(|_| format!("environment variable contains invalid UTF-8: {}", name))
+}
+
 pub fn parse_config() -> Result<Config, String> {
 	let mut raw_prefix  : &[u8] = b"/usr/local";
 	let mut raw_libdir  : &[u8] = b"lib";
@@ -112,7 +121,7 @@ pub fn parse_config() -> Result<Config, String> {
 	let mut raw_datadir : &[u8] = b"share";
 	let mut rely_on_search = false;
 
-	let raw_config = read_file(get_env("CONFIG_CACHE")?)?;
+	let raw_config = read_file(get_env_or("CONFIG_CACHE", "../config.cache")?)?;
 
 	for (i, line) in raw_config.split(|b| *b == b'\n').enumerate() {
 		let line = line.trim(|b| *b == b' ');
