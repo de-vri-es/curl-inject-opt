@@ -100,11 +100,6 @@ fn read_file(path: impl AsRef<Path>) -> Result<Vec<u8>, String> {
 	std::fs::read(path).map_err(|e| format!("failed to read file: {}: {}", path.display(), e))
 }
 
-fn get_env(name: &str) -> Result<String, String> {
-	println!("cargo:rerun-if-env-changed={}", name);
-	std::env::var(name).map_err(|e| format!("failed to get environment variable: {}: {}", name, e))
-}
-
 fn get_env_or(name: &str, default: &str) -> Result<String, String> {
 	println!("cargo:rerun-if-env-changed={}", name);
 	let value = match std::env::var_os(name) {
