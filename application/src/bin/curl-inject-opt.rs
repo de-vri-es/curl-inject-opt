@@ -21,7 +21,7 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use curl_inject_opt_shared::{OPTIONS, SetOption, config, serialize_options};
+use curl_inject_opt_shared::{config, serialize_options};
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 
@@ -30,19 +30,13 @@ fn main() {
 	let debug  = args.is_present("debug");
 
 	// Collect CURL options to set.
-	let mut set_options = Vec::with_capacity(OPTIONS.len());
-
-	for option in OPTIONS {
-		if let Some(value) = args.value_of(option.name) {
-			match SetOption::parse_value(*option, value.as_bytes()) {
-				Ok(x) => set_options.push(x),
-				Err(e) => {
-					eprintln!("{}", e);
-					std::process::exit(1);
-				}
-			}
+	let set_options = match curl_inject_opt::extract_curl_options(&args) {
+		Ok(x)  => x,
+		Err(e) => {
+			eprintln!("{}", e);
+			std::process::exit(1);
 		}
-	}
+	};
 
 	// Serialize CURL options for passing through the environment.
 	let serialized_options = serialize_options(set_options.iter());

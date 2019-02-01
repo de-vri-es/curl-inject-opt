@@ -21,7 +21,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use curl_inject_opt_shared::OPTIONS;
+use curl_inject_opt_shared::{OPTIONS, SetOption};
+use std::os::unix::ffi::OsStrExt;
 
 pub fn build_cli<'a, 'b>() -> clap::App<'a, 'b> {
 	let mut app = clap::App::new("curl-inject-opt")
@@ -54,4 +55,23 @@ pub fn build_cli<'a, 'b>() -> clap::App<'a, 'b> {
 	}
 
 	app
+}
+
+pub fn extract_curl_options(matches: &clap::ArgMatches) -> Result<Vec<SetOption>, String> {
+	// Collect all occurences of curl options into a vector with the clap index, so we can sort again.
+	// Clap stores matches in a hash map, so we have saner way to do this.
+
+	let mut options : Vec<_> = OPTIONS.iter().filter_map(|option| {
+		let values  = matches.values_of_os(option.name)?;
+		let indices = matches.indices_of(option.name).expect("clap match has values, but no indices");
+		Some((option, values, indices))
+	}).flat_map(|(option, values, indices)| {
+		std::iter::repeat(option).zip(values).zip(indices)
+	}).collect();
+
+	// Sort by index on the command line.
+	options.sort_unstable_by_key(|(_, index)| *index);
+
+	// Parse the options.
+	options.into_iter().map(|((option, value), _)| SetOption::parse_value(*option, value.as_bytes())).collect()
 }
