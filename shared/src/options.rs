@@ -28,22 +28,28 @@ use std::os::raw::c_long;
 
 macro_rules! curl_option {
 	( $name:literal, $curl_name:ident, $type:expr, $help:literal ) => {
-		Meta::new($name, curl_sys::$curl_name, $type, concat!(stringify!($curl_name), " - ", $help))
+		Meta {
+			name      : $name,
+			curl_name : stringify!($curl_name),
+			option    : curl_sys::$curl_name,
+			kind      : $type,
+			help      : concat!(stringify!($curl_name), ": ", $help),
+		}
 	};
 }
 
 /// Global list of known CURL options.
 pub const OPTIONS : &[Meta] = &[
-	curl_option!("verbose",          CURLOPT_VERBOSE,         Kind::CLong,   "Set to 1 to enable verbose output from CURL."),
+	curl_option!("verbose",          CURLOPT_VERBOSE,         Kind::CLong,   "Enable verbose output from CURL."),
 
 	curl_option!("proxy",            CURLOPT_PROXY,           Kind::CString, "Set the proxy to use."),
 	curl_option!("proxy-port",       CURLOPT_PROXYPORT,       Kind::CLong,   "Set the proxy port."),
 	curl_option!("proxy-type",       CURLOPT_PROXYTYPE,       Kind::CString, "Set the proxy type."),
-	curl_option!("proxy-tunnel",     CURLOPT_HTTPPROXYTUNNEL, Kind::CLong,   "Set to 1 to use CONNECT to tunnel through a configured HTTP proxy."),
-	curl_option!("no-proxy",         CURLOPT_NOPROXY,         Kind::CString, "Set hosts to contact directly, bypassing the proxy settings."),
+	curl_option!("proxy-tunnel",     CURLOPT_HTTPPROXYTUNNEL, Kind::CLong,   "Use CONNECT to tunnel through a configured HTTP proxy."),
+	curl_option!("no-proxy",         CURLOPT_NOPROXY,         Kind::CString, "Contact these hosts directly, bypassing the proxy."),
 
-	curl_option!("client-cert",      CURLOPT_SSLCERT,         Kind::CString, "Use a client certificate to authenticate with a remote server."),
-	curl_option!("client-cert-type", CURLOPT_SSLCERTTYPE,     Kind::CString, "Specify the type of the client certificate (normally defaults to PEM)."),
+	curl_option!("client-cert",      CURLOPT_SSLCERT,         Kind::CString, "Use a client certificate for requests."),
+	curl_option!("client-cert-type", CURLOPT_SSLCERTTYPE,     Kind::CString, "Specify the type of the client certificate."),
 	curl_option!("client-key",       CURLOPT_SSLKEY,          Kind::CString, "Use a separate file as key with the client certificate."),
 
 	//curl_option!("proxy-client-cert",      CURLOPT_PROXY_SSLCERT,      Kind::CString, "Use a client certificate to authenticate with the proxy."),
@@ -101,6 +107,9 @@ pub struct Meta {
 	/// A human friendly name for the option.
 	pub name: &'static str,
 
+	/// The CURL name for the option.
+	pub curl_name: &'static str,
+
 	/// The CURLoption value for the option.
 	pub option: CURLoption,
 
@@ -109,13 +118,6 @@ pub struct Meta {
 
 	/// A description of the option for humans.
 	pub help: &'static str,
-}
-
-impl Meta {
-	/// Create the metadata for a CURL option from the components.
-	pub const fn new(name: &'static str, option: CURLoption, kind: Kind, help: &'static str) -> Self {
-		Self{name, option, kind, help}
-	}
 }
 
 /// A CURL option with an embedded value.
