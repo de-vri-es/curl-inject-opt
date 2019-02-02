@@ -9,6 +9,6 @@ license = "BSD-2-Clause"
 curl-inject-opt-shared = { path = "../shared" }
 
 ansi_term = "0.11.0"
-libc      = "*"
-clap      = "*"
-structopt = "*"
+libc      = "0.2.48"
+clap      = "2.32.0"
+structopt = "0.2.14"

@@ -10,5 +10,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 curl-inject-opt-shared = { path = "../shared" }
-libc      = "*"
-curl-sys  = "*"
+libc      = "0.2.48"
+curl-sys  = "0.4.16"
