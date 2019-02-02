@@ -51,6 +51,7 @@ pub const OPTIONS : &[Meta] = &[
 	curl_option!("client-cert",      CURLOPT_SSLCERT,         Kind::CString, "Use a client certificate for requests."),
 	curl_option!("client-cert-type", CURLOPT_SSLCERTTYPE,     Kind::CString, "Specify the type of the client certificate."),
 	curl_option!("client-key",       CURLOPT_SSLKEY,          Kind::CString, "Use a separate file as key with the client certificate."),
+	curl_option!("client-keyt-ype",  CURLOPT_SSLKEYTYPE,      Kind::CString, "Specify the type of the client key."),
 
 	//curl_option!("proxy-client-cert",      CURLOPT_PROXY_SSLCERT,      Kind::CString, "Use a client certificate to authenticate with the proxy."),
 	//curl_option!("proxy-client-cert-type", CURLOPT_PROXY_SSLCERTTYPE,  Kind::CString, "Specify the type of the proxy client certificate."),
