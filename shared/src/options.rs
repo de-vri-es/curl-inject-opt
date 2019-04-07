@@ -40,18 +40,21 @@ macro_rules! curl_option {
 
 /// Global list of known CURL options.
 pub const OPTIONS : &[Meta] = &[
-	curl_option!("verbose",          CURLOPT_VERBOSE,         Kind::CLong,   "Enable verbose output from CURL."),
+	curl_option!("verbose",          CURLOPT_VERBOSE,           Kind::CLong,   "Enable verbose output from CURL."),
 
-	curl_option!("proxy",            CURLOPT_PROXY,           Kind::CString, "Set the proxy to use."),
-	curl_option!("proxy-port",       CURLOPT_PROXYPORT,       Kind::CLong,   "Set the proxy port."),
-	curl_option!("proxy-type",       CURLOPT_PROXYTYPE,       Kind::CString, "Set the proxy type."),
-	curl_option!("proxy-tunnel",     CURLOPT_HTTPPROXYTUNNEL, Kind::CLong,   "Use CONNECT to tunnel through a configured HTTP proxy."),
-	curl_option!("no-proxy",         CURLOPT_NOPROXY,         Kind::CString, "Contact these hosts directly, bypassing the proxy."),
+	curl_option!("timeout",          CURLOPT_TIMEOUT_MS,        Kind::CLong,   "Timeout in milliseconds for the whole request."),
+	curl_option!("connect-timeout",  CURLOPT_CONNECTTIMEOUT_MS, Kind::CLong,   "Timeout in milliseconds for the connection phase of the request."),
 
-	curl_option!("client-cert",      CURLOPT_SSLCERT,         Kind::CString, "Use a client certificate for requests."),
-	curl_option!("client-cert-type", CURLOPT_SSLCERTTYPE,     Kind::CString, "Specify the type of the client certificate."),
-	curl_option!("client-key",       CURLOPT_SSLKEY,          Kind::CString, "Use a separate file as key with the client certificate."),
-	curl_option!("client-keyt-ype",  CURLOPT_SSLKEYTYPE,      Kind::CString, "Specify the type of the client key."),
+	curl_option!("proxy",            CURLOPT_PROXY,             Kind::CString, "Set the proxy to use."),
+	curl_option!("proxy-port",       CURLOPT_PROXYPORT,         Kind::CLong,   "Set the proxy port."),
+	curl_option!("proxy-type",       CURLOPT_PROXYTYPE,         Kind::CString, "Set the proxy type."),
+	curl_option!("proxy-tunnel",     CURLOPT_HTTPPROXYTUNNEL,   Kind::CLong,   "Use CONNECT to tunnel through a configured HTTP proxy."),
+	curl_option!("no-proxy",         CURLOPT_NOPROXY,           Kind::CString, "Contact these hosts directly, bypassing the proxy."),
+
+	curl_option!("client-cert",      CURLOPT_SSLCERT,           Kind::CString, "Use a client certificate for requests."),
+	curl_option!("client-cert-type", CURLOPT_SSLCERTTYPE,       Kind::CString, "Specify the type of the client certificate."),
+	curl_option!("client-key",       CURLOPT_SSLKEY,            Kind::CString, "Use a separate file as key with the client certificate."),
+	curl_option!("client-keyt-ype",  CURLOPT_SSLKEYTYPE,        Kind::CString, "Specify the type of the client key."),
 
 	//curl_option!("proxy-client-cert",      CURLOPT_PROXY_SSLCERT,      Kind::CString, "Use a client certificate to authenticate with the proxy."),
 	//curl_option!("proxy-client-cert-type", CURLOPT_PROXY_SSLCERTTYPE,  Kind::CString, "Specify the type of the proxy client certificate."),
