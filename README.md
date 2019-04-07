@@ -60,10 +60,10 @@ $ make install DESTDIR="..."
 
 Since `curl-inject-opt` uses `LD_PRELOAD` to intercept function calls,
 it is subject to the usual security restrictions imposed by the operating system.
-On Linux, this means that programs run in secure-execution mode will not simply preload the library.
-In practise, this is not a problem in most scenarios, since it should work fine to run `sudo curl-inject-opt ...`.
+On Linux, this means that programs which are run in secure-execution mode will not simply preload the library.
+This is generally not a problem, since it should work fine to run `sudo curl-inject-opt ...`.
 
-Secure execution mode on Linux is generally used (amongst others) when a program has the `setuid` or `setgid` permission bit set,
+Secure execution mode on Linux is used (amongst others) when a program has the `setuid` or `setgid` permission bit set,
 or if the program has additional capabilities as set by the `setcap` tool.
 For more information, see `man 8 ld.so` on Linux.
 
