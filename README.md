@@ -10,24 +10,26 @@ Whenever a call is intercepted, the options listed in `CURL_INJECT_OPT` are set 
 before the original `curl_easy_perform()` is called.
 
 This can be used to take advantage of certain CURL features even if the program being run doesn't expose them.
-Currently, supported options include TLS client certificate settings, proxy settings, and CURLOPT_VERBOSE.
+Currently, supported options include timeout options, TLS client certificate settings, proxy settings, and `CURLOPT_VERBOSE`.
 For a full list, see the table below.
 
 For the exact effects of an option, refer to the man-page of the relevant CURL option.
 
 ## Options:
 
-Usage                       |  CURL option               | Description
-----------------------------|----------------------------|---------------
-`--verbose <VAL>`           |  `CURLOPT_VERBOSE`         | Set to 1 to enable verbose output from CURL.
-`--proxy <VAL>`             |  `CURLOPT_PROXY`           | Set the proxy to use.
-`--proxy-port <VAL>`        |  `CURLOPT_PROXYPORT`       | Set the proxy port.
-`--proxy-type <VAL>`        |  `CURLOPT_PROXYTYPE`       | Set the proxy type.
-`--proxy-tunnel <VAL>`      |  `CURLOPT_HTTPPROXYTUNNEL` | Set to 1 to use CONNECT to tunnel through a configured HTTP proxy.
-`--no-proxy <VAL>`          |  `CURLOPT_NOPROXY`         | Set hosts to contact directly, bypassing the proxy settings.
-`--client-cert <VAL>`       |  `CURLOPT_SSLCERT`         | Use a client certificate to authenticate with a remote server.
-`--client-cert-type <VAL>`  |  `CURLOPT_SSLCERTTYPE`     | Specify the type of the client certificate (normally defaults to PEM).
-`--client-key <VAL>`        |  `CURLOPT_SSLKEY`          | Use a separate file as key with the client certificate.
+Usage                       |  CURL option                 | Description
+----------------------------|------------------------------|---------------
+`--verbose <VAL>`           |  `CURLOPT_VERBOSE`           | Set to 1 to enable verbose output from CURL.
+`--timeout <VAL>`           |  `CURLOPT_TIMEOUT_MS`        | Timeout in milliseconds for the whole request.
+`--connect-timeout <VAL>`   |  `CURLOPT_CONNECTTIMEOUT_MS` | Timeout in milliseconds for the connection phase of the request.
+`--proxy <VAL>`             |  `CURLOPT_PROXY`             | Set the proxy to use.
+`--proxy-port <VAL>`        |  `CURLOPT_PROXYPORT`         | Set the proxy port.
+`--proxy-type <VAL>`        |  `CURLOPT_PROXYTYPE`         | Set the proxy type.
+`--proxy-tunnel <VAL>`      |  `CURLOPT_HTTPPROXYTUNNEL`   | Set to 1 to use CONNECT to tunnel through a configured HTTP proxy.
+`--no-proxy <VAL>`          |  `CURLOPT_NOPROXY`           | Set hosts to contact directly, bypassing the proxy settings.
+`--client-cert <VAL>`       |  `CURLOPT_SSLCERT`           | Use a client certificate to authenticate with a remote server.
+`--client-cert-type <VAL>`  |  `CURLOPT_SSLCERTTYPE`       | Specify the type of the client certificate (normally defaults to PEM).
+`--client-key <VAL>`        |  `CURLOPT_SSLKEY`            | Use a separate file as key with the client certificate.
 
 
 ## Building
