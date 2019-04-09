@@ -30,6 +30,7 @@ Usage                       |  CURL option                 | Description
 `--client-cert <VAL>`       |  `CURLOPT_SSLCERT`           | Use a client certificate to authenticate with a remote server.
 `--client-cert-type <VAL>`  |  `CURLOPT_SSLCERTTYPE`       | Specify the type of the client certificate (normally defaults to PEM).
 `--client-key <VAL>`        |  `CURLOPT_SSLKEY`            | Use a separate file as key with the client certificate.
+`--client-key-type <VAL>`   |  `CURLOPT_SSLKEYTYPE`        | Specify the type of the client key.
 
 
 ## Building
