@@ -10,7 +10,7 @@ all:
 	cd "${PROJECT_ROOT}" && CONFIG_CACHE="${BUILD_DIR}/config.cache" cargo build --target-dir="${BUILD_DIR}/target" --release
 
 clean:
-	rm -rf target
+	rm -rf "${BUILD_DIR}/target"
 
 install: all
 	@./target/release/install --destdir "${DESTDIR}" --bash --zsh --fish
