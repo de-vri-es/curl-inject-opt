@@ -1,4 +1,7 @@
 /target
+/application/target
+/preload/target
+/shared/target
 **/*.rs.bk
 
 /target
