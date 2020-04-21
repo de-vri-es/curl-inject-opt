@@ -7,4 +7,4 @@ license = "BSD-2-Clause"
 build   = "build.rs"
 
 [dependencies]
-curl-sys     = "0.4.16"
+curl-sys = "0.4.16"

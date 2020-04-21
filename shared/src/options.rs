@@ -21,10 +21,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use super::{CURL, CURLcode, CURLoption, CurlEasySetOpt};
-
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::os::raw::c_long;
+
+use curl_sys::CURLoption;
 
 macro_rules! curl_option {
 	( $name:literal, $curl_name:ident, $type:expr, $help:literal ) => {
@@ -183,13 +183,5 @@ impl SetOption {
 		}
 
 		Err(format!("unknown option: {}", name))
-	}
-
-	/// Set the value of this CURL option for a CURL easy handle.
-	pub fn set(&self, curl_easy_setopt: CurlEasySetOpt, handle: *mut CURL) -> CURLcode {
-		match &self.value {
-			Value::CString(x) => curl_easy_setopt(handle, self.option, x.as_ref() as *const CStr),
-			Value::CLong(x)   => curl_easy_setopt(handle, self.option, *x),
-		}
 	}
 }
