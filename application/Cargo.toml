@@ -8,7 +8,7 @@ license = "BSD-2-Clause"
 [dependencies]
 curl-inject-opt-shared = { path = "../shared" }
 
-ansi_term = "0.11.0"
-libc      = "0.2.48"
 clap      = "2.32.0"
-structopt = "0.2.14"
+libc      = "0.2.48"
+structopt = "0.3.13"
+yansi     = "0.5.0"

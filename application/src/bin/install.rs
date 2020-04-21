@@ -26,22 +26,28 @@ use std::path::{Path, PathBuf};
 use std::ffi::{OsString};
 
 use curl_inject_opt_shared::config;
-use ansi_term::Colour::{Red, Green};
+use yansi::Paint;
 
 #[derive(Debug, Clone, StructOpt)]
-#[structopt(about = "Install the curl-inject-opt binary and preload library.", author = "")]
-#[structopt(raw(setting = "structopt::clap::AppSettings::ColoredHelp"))]
+#[structopt(about = "Install the curl-inject-opt binary and preload library.")]
+#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
+#[structopt(setting = structopt::clap::AppSettings::DeriveDisplayOrder)]
+#[structopt(setting = structopt::clap::AppSettings::UnifiedHelpMessage)]
 struct Args {
-	#[structopt(long = "destdir", help = "Install files to a fake root (generally used for packaging).")]
+	/// Install files to a fake root (generally used for packaging).
+	#[structopt(long)]
 	destdir: String,
 
-	#[structopt(long = "bash", help = "Install bash completion.")]
+	/// Install bash completion.
+	#[structopt(long)]
 	bash: bool,
 
-	#[structopt(long = "zsh", help = "Install zsh completion.")]
+	/// Install zsh completion.
+	#[structopt(long)]
 	zsh: bool,
 
-	#[structopt(long = "fish", help = "Install fish completion.")]
+	/// Install fish completion.
+	#[structopt(long)]
 	fish: bool,
 }
 
@@ -68,7 +74,10 @@ fn install_file(mode: u32, source: impl AsRef<Path>, dest_dir: impl AsRef<Path>)
 	let dest_dir = dest_dir.as_ref();
 	let dest     = dest_dir.join(source.file_name().unwrap());
 
-	eprintln!("{} {}", Green.bold().paint("  Installing"), dest.display());
+	eprintln!("{} {}",
+		Paint::green("  Installing").bold(),
+		dest.display()
+	);
 
 	std::fs::remove_file(&dest).or_else(|e| match e.kind() {
 		std::io::ErrorKind::NotFound => Ok(()),
@@ -120,30 +129,39 @@ fn install() -> Result<(), String> {
 	if args.bash {
 		make_dir(&bashdir)?;
 		cli.gen_completions("curl-inject-opt", clap::Shell::Bash, &bashdir);
-		eprintln!("{} {}", Green.bold().paint("  Installing"), bashdir.join("curl-inject-opt.bash").display());
+		eprintln!("{} {}",
+			Paint::green("  Installing").bold(),
+			bashdir.join("curl-inject-opt.bash").display()
+		);
 	}
 
 	if args.zsh {
 		make_dir(&zshdir)?;
 		cli.gen_completions("curl-inject-opt", clap::Shell::Zsh, &zshdir);
-		eprintln!("{} {}", Green.bold().paint("  Installing"), zshdir.join("_curl-inject-opt").display());
+		eprintln!("{} {}",
+			Paint::green("  Installing").bold(),
+			zshdir.join("_curl-inject-opt").display()
+		);
 	}
 
 	if args.fish {
 		make_dir(&fishdir)?;
 		cli.gen_completions("curl-inject-opt", clap::Shell::Fish, &fishdir);
-		eprintln!("{} {}", Green.bold().paint("  Installing"), fishdir.join("curl-inject-opt.fish").display());
+		eprintln!("{} {}",
+			Paint::green("  Installing").bold(),
+			fishdir.join("curl-inject-opt.fish").display()
+		);
 	}
 
 	Ok(())
 }
 
 fn main() {
-	let error = match install() {
-		Ok(())   => return,
-		Err(err) => err,
-	};
-
-	eprintln!("{} {}", Red.bold().paint("Error:"), error);
-	std::process::exit(1);
+	if let Err(error) = install() {
+		eprintln!("{} {}",
+			Paint::red("Error:").bold(),
+			error
+		);
+		std::process::exit(1);
+	}
 }
