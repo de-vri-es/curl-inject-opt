@@ -5,9 +5,9 @@ The subcommand will be run with `/path/to/libcurl-inject-opt-preload.so` added t
 and a list of options to set in the `CURL_INJECT_OPT` environment variable.
 The command-line tool takes care of these steps automatically.
 
-The preloaded library will intercept calls to `curl_easy_perform()`.
+The preloaded library will intercept calls to `curl_easy_perform()` and `curl_multi_add_handle()`.
 Whenever a call is intercepted, the options listed in `CURL_INJECT_OPT` are set on the relevant CURL handle
-before the original `curl_easy_perform()` is called.
+before the original function is called.
 
 This can be used to take advantage of certain CURL features even if the program being run doesn't expose them.
 Currently, supported options include timeout options, TLS client certificate settings, proxy settings, and `CURLOPT_VERBOSE`.
@@ -72,7 +72,7 @@ Although not recommended, it is possible to make `curl-inject-opt` work even wit
 
 To make `curl-inject-opt` work with secure execution mode, the entry added to `LD_PRELOAD` must consist only of the library name `libcurl-inject-opt.so` with no path information.
 The library must be found by the dynamic linker in the default search path and the library must have the `setuid` permission bit set.
-This can party be achieved by configuring the project with `./configure PREFIX=/usr RELY_ON_SEARCH=1`.
+This can partly be achieved by configuring the project with `./configure PREFIX=/usr RELY_ON_SEARCH=1`.
 See `./configure --help` for more information.
 
 It is up to the packager or installer to set the `setuid` bit of the installed library, if desired.
