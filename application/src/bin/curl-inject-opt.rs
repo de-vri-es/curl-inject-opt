@@ -27,6 +27,10 @@ use std::path::PathBuf;
 use yansi::Paint;
 
 fn main() {
+	if !curl_inject_opt::should_color(2) {
+		Paint::disable();
+	}
+
 	let args       = curl_inject_opt::build_cli().get_matches();
 	let print_env  = args.is_present("print-env");
 	let debug      = args.is_present("debug");
