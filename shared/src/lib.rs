@@ -27,12 +27,9 @@ mod options;
 
 pub use self::options::{Kind, Value, Meta, SetOption, OPTIONS};
 
-pub use curl_sys::CURL;
-pub use curl_sys::CURLoption;
-pub use curl_sys::CURLcode;
-
-pub type CurlEasySetOpt  = extern "C" fn(handle: *mut CURL, option: CURLoption, ...) -> CURLcode;
-pub type CurlEasyPerform = extern "C" fn(handle: *mut CURL) -> CURLcode;
+pub mod reexports {
+	pub use curl_sys;
+}
 
 fn encode_option_append(buffer: &mut Vec<u8>, option: &SetOption) {
 	buffer.extend(option.name.as_bytes());

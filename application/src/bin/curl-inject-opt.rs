@@ -24,8 +24,13 @@
 use curl_inject_opt_shared::{config, serialize_options};
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
+use yansi::Paint;
 
 fn main() {
+	if !curl_inject_opt::should_color(2) {
+		Paint::disable();
+	}
+
 	let args       = curl_inject_opt::build_cli().get_matches();
 	let print_env  = args.is_present("print-env");
 	let debug      = args.is_present("debug");
@@ -40,7 +45,7 @@ fn main() {
 	let set_options = match curl_inject_opt::extract_curl_options(&args) {
 		Ok(x)  => x,
 		Err(e) => {
-			eprintln!("{}", e);
+			eprintln!("{} {}", Paint::red("Error:").bold(), e);
 			std::process::exit(1);
 		}
 	};
@@ -69,7 +74,7 @@ fn main() {
 		let new_preload = match std::env::join_paths(std::iter::once(preload_lib.clone()).chain(std::env::split_paths(&old_preload))) {
 			Ok(x) => x,
 			Err(_) => {
-				println!("preload library path contains separator: {}", preload_lib.display());
+				eprintln!("{}: preload library path contains separator: {}", Paint::red("Error:").bold(), preload_lib.display());
 				std::process::exit(1);
 			}
 		};
@@ -89,6 +94,6 @@ fn main() {
 	child.env("CURL_INJECT_OPT", std::ffi::OsStr::from_bytes(&serialized_options));
 
 	let error = child.exec();
-	eprintln!("Failed to execute command: {}", error);
-	std::process::exit(-1);
+	eprintln!("{} failed to execute command: {}", Paint::red("Error:").bold(), error);
+	std::process::exit(2);
 }

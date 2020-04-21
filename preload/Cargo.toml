@@ -1,7 +1,10 @@
 [package]
 name    = "curl-inject-opt-preload"
 version = "0.2.0"
-authors = ["Maarten de Vries <maarten@de-vri.es>"]
+authors = [
+	"Maarten de Vries <maarten@de-vri.es>",
+	"Fizyr B.V.",
+]
 edition = "2018"
 license = "BSD-2-Clause"
 
@@ -10,5 +13,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 curl-inject-opt-shared = { path = "../shared" }
-libc      = "0.2.48"
-curl-sys  = "0.4.16"
+libc = "0.2.48"

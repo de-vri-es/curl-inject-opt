@@ -157,6 +157,10 @@ fn install() -> Result<(), String> {
 }
 
 fn main() {
+	if !curl_inject_opt::should_color(2) {
+		Paint::disable();
+	}
+
 	if let Err(error) = install() {
 		eprintln!("{} {}",
 			Paint::red("Error:").bold(),

@@ -63,7 +63,6 @@ name = "curl-inject-opt-preload"
 version = "0.2.0"
 dependencies = [
  "curl-inject-opt-shared 0.2.0",
- "curl-sys 0.4.30+curl-7.69.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.69 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
