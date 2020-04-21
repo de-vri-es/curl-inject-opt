@@ -44,27 +44,27 @@ dependencies = [
 
 [[package]]
 name = "curl-inject-opt"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap 2.33.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "curl-inject-opt-shared 0.1.1",
+ "curl-inject-opt-shared 0.2.0",
  "libc 0.2.51 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "curl-inject-opt-preload"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
- "curl-inject-opt-shared 0.1.1",
+ "curl-inject-opt-shared 0.2.0",
  "curl-sys 0.4.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.51 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "curl-inject-opt-shared"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "curl-sys 0.4.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
