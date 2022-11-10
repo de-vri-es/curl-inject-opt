@@ -1,5 +1,5 @@
-Unreleased:
-  * Update dependencies versions.
+v0.2.2 - 2022-11-10:
+  * Update dependencies.
 
 v0.2.1:
   * Add support for CURL multi handles.
