@@ -32,9 +32,9 @@ fn main() {
 	}
 
 	let args       = curl_inject_opt::build_cli().get_matches();
-	let print_env  = args.is_present("print-env");
-	let debug      = args.is_present("debug");
-	let no_inherit = args.is_present("no-inherit");
+	let print_env  = args.get_flag("print-env");
+	let debug      = args.get_flag("debug");
+	let no_inherit = args.get_flag("no-inherit");
 
 	let preload_lib = match config::rely_on_search() {
 		true  => PathBuf::from("libcurl_inject_opt_preload.so"),
@@ -66,7 +66,7 @@ fn main() {
 
 	use std::os::unix::process::CommandExt;
 
-	let command : Vec<&str> = args.values_of("COMMAND").unwrap().collect();
+	let command : Vec<&&str> = args.get_many("COMMAND").unwrap().collect();
 	let mut child = std::process::Command::new(&command[0]);
 	let mut child = child.args(&command[1..]);
 

@@ -21,9 +21,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use structopt::StructOpt;
+use clap_complete::Shell;
+use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::ffi::{OsString};
+use structopt::StructOpt;
 
 use curl_inject_opt_shared::config;
 use yansi::Paint;
@@ -128,16 +129,18 @@ fn install() -> Result<(), String> {
 
 	if args.bash {
 		make_dir(&bashdir)?;
-		cli.gen_completions("curl-inject-opt", clap::Shell::Bash, &bashdir);
 		eprintln!("{} {}",
 			Paint::green("  Installing").bold(),
 			bashdir.join("curl-inject-opt.bash").display()
 		);
+		clap_complete::generate_to(Shell::Bash, &mut cli, "curl-inject-opt", &bashdir)
+			.map_err(|e| format!("Failed to write shell completion: {}.", e))?;
 	}
 
 	if args.zsh {
 		make_dir(&zshdir)?;
-		cli.gen_completions("curl-inject-opt", clap::Shell::Zsh, &zshdir);
+		clap_complete::generate_to(Shell::Zsh, &mut cli, "curl-inject-opt", &zshdir)
+			.map_err(|e| format!("Failed to write shell completion: {}.", e))?;
 		eprintln!("{} {}",
 			Paint::green("  Installing").bold(),
 			zshdir.join("_curl-inject-opt").display()
@@ -146,7 +149,9 @@ fn install() -> Result<(), String> {
 
 	if args.fish {
 		make_dir(&fishdir)?;
-		cli.gen_completions("curl-inject-opt", clap::Shell::Fish, &fishdir);
+		clap_complete::generate_to(Shell::Fish, &mut cli, "curl-inject-opt", &fishdir)
+			.map_err(|e| format!("Failed to write shell completion: {}.", e))?;
+
 		eprintln!("{} {}",
 			Paint::green("  Installing").bold(),
 			fishdir.join("curl-inject-opt.fish").display()
