@@ -24,37 +24,32 @@
 use curl_inject_opt_shared::{OPTIONS, SetOption};
 use std::os::unix::ffi::OsStrExt;
 
-pub fn build_cli<'a, 'b>() -> clap::App<'a, 'b> {
-	let mut app = clap::App::new("curl-inject-opt")
-		.setting(clap::AppSettings::TrailingVarArg)
-		.setting(clap::AppSettings::DeriveDisplayOrder)
-		.setting(clap::AppSettings::ColoredHelp)
+pub fn build_cli() -> clap::Command {
+	let mut app = clap::Command::new("curl-inject-opt")
 		.about("Inject options into CURL requests for a subcommand.")
-		.arg(clap::Arg::with_name("debug")
+		.arg(clap::Arg::new("debug")
 			.long("--debug")
-			.short("d")
+			.short('d')
 			.help("Enable some debug printing in the preloaded library.")
 		)
-		.arg(clap::Arg::with_name("no-inherit")
+		.arg(clap::Arg::new("no-inherit")
 			.long("--no-inherit")
 			.help("Do not inject options for child processes of the subcommand.")
 		)
-		.arg(clap::Arg::with_name("print-env")
+		.arg(clap::Arg::new("print-env")
 			.long("--print-env")
 			.help("Print the environment variables and exit without running a command.")
 		)
-		.arg(clap::Arg::with_name("COMMAND")
-			.required_unless("print-env")
-			.multiple(true)
+		.arg(clap::Arg::new("COMMAND")
+			.required_unless_present("print-env")
+			.trailing_var_arg(true)
 			.help("The command to run.")
 		);
 
 	for option in OPTIONS {
-		app = app.arg(clap::Arg::with_name(option.name)
+		app = app.arg(clap::Arg::new(option.name)
 			.long(option.name)
-			.takes_value(true)
 			.value_name("VAL")
-			.multiple(true)
 			.number_of_values(1)
 			.help(option.help)
 		);
@@ -68,7 +63,7 @@ pub fn extract_curl_options(matches: &clap::ArgMatches) -> Result<Vec<SetOption>
 	// Clap stores matches in a hash map, so we have no saner way to do this.
 
 	let mut options : Vec<_> = OPTIONS.iter().filter_map(|option| {
-		let values  = matches.values_of_os(option.name)?;
+		let values  = matches.get_raw(option.name)?;
 		let indices = matches.indices_of(option.name).expect("clap match has values, but no indices");
 		Some((option, values, indices))
 	}).flat_map(|(option, values, indices)| {
