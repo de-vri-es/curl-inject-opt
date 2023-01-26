@@ -25,6 +25,7 @@ pub fn escape_comma(byte: u8) -> bool {
 	byte == b',' || byte == b'%'
 }
 
+#[allow(clippy::identity_op)]
 pub fn encode_append(buffer: &mut Vec<u8>, data: &[u8], should_escape: impl Fn(u8) -> bool) {
 	let escape_count = data.iter().filter(|byte| should_escape(**byte)).count();
 	buffer.reserve(data.len() + escape_count * 2);

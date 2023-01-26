@@ -64,7 +64,7 @@ pub struct Config {
 
 impl Config {
 	pub fn prefix(&self) -> &Path {
-		&Path::new(&self.raw_prefix)
+		Path::new(&self.raw_prefix)
 	}
 
 	pub fn libdir(&self) -> PathBuf {
@@ -146,10 +146,10 @@ pub fn parse_config() -> Result<Config, String> {
 	}
 
 	Ok(Config {
-		raw_prefix:  String::from_utf8(raw_prefix.to_vec()).map_err(|_| format!("PREFIX contains invalid UTF-8"))?,
-		raw_libdir:  String::from_utf8(raw_libdir.to_vec()).map_err(|_| format!("LIBDIR contains invalid UTF-8"))?,
-		raw_bindir:  String::from_utf8(raw_bindir.to_vec()).map_err(|_| format!("BINDIR contains invalid UTF-8"))?,
-		raw_datadir: String::from_utf8(raw_datadir.to_vec()).map_err(|_| format!("DATADIR contains invalid UTF-8"))?,
+		raw_prefix:  String::from_utf8(raw_prefix.to_vec()).map_err(|_| "PREFIX contains invalid UTF-8")?,
+		raw_libdir:  String::from_utf8(raw_libdir.to_vec()).map_err(|_| "LIBDIR contains invalid UTF-8")?,
+		raw_bindir:  String::from_utf8(raw_bindir.to_vec()).map_err(|_| "BINDIR contains invalid UTF-8")?,
+		raw_datadir: String::from_utf8(raw_datadir.to_vec()).map_err(|_| "DATADIR contains invalid UTF-8")?,
 		rely_on_search
 	})
 }
@@ -157,7 +157,11 @@ pub fn parse_config() -> Result<Config, String> {
 fn main() {
 	let config  = parse_config().expect("failed to parse config.cache");
 	let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").expect("failed to get OUT_DIR from environment"));
-	let mut config_out = std::fs::File::create(out_dir.join("config.rs")).expect(&format!("failed to open {} for writing", out_dir.join("config.rs").display()));
+	let mut config_out = std::fs::File::create(out_dir.join("config.rs"))
+		.unwrap_or_else(|e| {
+			eprintln!("failed to open {} for writing: {}", out_dir.join("config.rs").display(), e);
+			std::process::exit(1);
+		});
 
 	writeln!(config_out, "pub const PREFIX           : &str = {:#?};", config.raw_prefix).unwrap();
 	writeln!(config_out, "pub const LIBDIR           : &str = {:#?};", config.raw_libdir).unwrap();

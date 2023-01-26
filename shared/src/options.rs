@@ -178,7 +178,11 @@ impl SetOption {
 				if candidate.kind != value.kind() {
 					return Err(format!("wrong value type for option {}: expected {} but got {}", candidate.name, candidate.kind, value.kind()))
 				}
-				return Ok(Self{name: candidate.name, option: candidate.option, value: value})
+				return Ok(Self {
+					name: candidate.name,
+					option: candidate.option,
+					value,
+				})
 			}
 		}
 
