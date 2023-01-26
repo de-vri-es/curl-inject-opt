@@ -103,7 +103,7 @@ dependencies = [
 
 [[package]]
 name = "curl-inject-opt"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "clap 4.0.22",
  "clap_complete",
@@ -115,7 +115,7 @@ dependencies = [
 
 [[package]]
 name = "curl-inject-opt-preload"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "curl-inject-opt-shared",
  "libc",
@@ -123,7 +123,7 @@ dependencies = [
 
 [[package]]
 name = "curl-inject-opt-shared"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "curl-sys",
 ]

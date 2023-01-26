@@ -1,6 +1,6 @@
 [package]
 name    = "curl-inject-opt-shared"
-version = "0.2.2"
+version = "0.2.3"
 authors = [
 	"Maarten de Vries <maarten@de-vri.es>",
 	"Fizyr B.V.",

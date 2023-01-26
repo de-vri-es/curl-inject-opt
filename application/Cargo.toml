@@ -1,6 +1,6 @@
 [package]
 name    = "curl-inject-opt"
-version = "0.2.2"
+version = "0.2.3"
 authors = [
 	"Maarten de Vries <maarten@de-vri.es>",
 	"Fizyr B.V.",
@@ -9,7 +9,7 @@ edition = "2021"
 license = "BSD-2-Clause"
 
 [dependencies]
-curl-inject-opt-shared = { path = "../shared", version = "0.2.2" }
+curl-inject-opt-shared = { path = "../shared", version = "0.2.3" }
 
 clap          = { version = "4.0.22", features = ["derive"] }
 clap_complete = "4.0.5"
