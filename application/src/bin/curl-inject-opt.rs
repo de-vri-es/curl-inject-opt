@@ -66,8 +66,8 @@ fn main() {
 
 	use std::os::unix::process::CommandExt;
 
-	let command : Vec<&&str> = args.get_many("COMMAND").unwrap().collect();
-	let mut child = std::process::Command::new(&command[0]);
+	let command : Vec<&String> = args.get_many("COMMAND").unwrap().collect();
+	let mut child = std::process::Command::new(command[0]);
 	let mut child = child.args(&command[1..]);
 
 	if let Some(old_preload) = std::env::var_os("LD_PRELOAD") {

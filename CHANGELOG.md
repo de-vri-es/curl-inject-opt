@@ -1,3 +1,6 @@
+main:
+  * Fix argument parsing with clap 4.
+
 v0.2.2 - 2022-11-10:
   * Update dependencies.
 
