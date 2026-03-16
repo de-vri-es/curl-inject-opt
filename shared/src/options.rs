@@ -115,11 +115,9 @@ pub struct SetOption {
 	pub value: Value,
 }
 
-fn parse_long(bytes: &[u8]) -> Result<c_long, std::num::ParseIntError> {
-	// NOTE: from_str_radix only works on ASCII anyway.
-	// It immediately converts the string to bytes anyway.
-	let as_str = unsafe { std::str::from_utf8_unchecked(bytes) };
-	c_long::from_str_radix(as_str, 10)
+fn parse_long(bytes: &[u8]) -> Result<c_long, ()> {
+	let string = std::str::from_utf8(bytes).map_err(|_| ())?;
+	c_long::from_str_radix(string, 10).map_err(|_| ())
 }
 
 impl SetOption {
