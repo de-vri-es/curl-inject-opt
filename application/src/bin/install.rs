@@ -24,16 +24,12 @@
 use clap_complete::Shell;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use structopt::StructOpt;
 
 use curl_inject_opt_shared::config;
 use yansi::Paint;
 
-#[derive(Debug, Clone, StructOpt)]
-#[structopt(about = "Install the curl-inject-opt binary and preload library.")]
-#[structopt(setting = structopt::clap::AppSettings::ColoredHelp)]
-#[structopt(setting = structopt::clap::AppSettings::DeriveDisplayOrder)]
-#[structopt(setting = structopt::clap::AppSettings::UnifiedHelpMessage)]
+#[derive(Debug, Clone, clap::Parser)]
+#[clap(about = "Install the curl-inject-opt binary and preload library.")]
 struct Args {
 	/// Install files to a fake root (generally used for packaging).
 	#[structopt(long)]
@@ -108,7 +104,7 @@ fn make_dir(path: impl AsRef<Path>) -> Result<(), String> {
 }
 
 fn install() -> Result<(), String> {
-	let args = Args::from_args();
+	let args: Args = clap::Parser::parse();
 
 	let cwd     = std::env::current_dir().map_err(|e| format!("Failed to get current working directory: {}", e))?;
 	let destdir = cwd.join(args.destdir);

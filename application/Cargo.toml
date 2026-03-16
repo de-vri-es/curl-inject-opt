@@ -14,5 +14,4 @@ curl-inject-opt-shared = { path = "../shared", version = "0.2.3" }
 clap          = { version = "4.0.22", features = ["derive"] }
 clap_complete = "4.0.5"
 libc          = "0.2.48"
-structopt     = "0.3.13"
 yansi         = "0.5.0"

@@ -23,6 +23,7 @@
 
 use std::ffi::CStr;
 use std::os::unix::ffi::OsStrExt;
+use std::sync::LazyLock;
 
 use curl_inject_opt_shared::SetOption;
 use curl_inject_opt_shared::Value;
@@ -149,12 +150,10 @@ impl CurlInjectOpt {
 	}
 }
 
-static mut _INIT : Option<Result<CurlInjectOpt, String>> = None;
+static INIT : LazyLock<Result<CurlInjectOpt, String>> = LazyLock::new(CurlInjectOpt::init);
 
 extern "C" fn initialize() {
-	unsafe {
-		_INIT = Some(CurlInjectOpt::init());
-	}
+	let _ = &*INIT;
 }
 
 #[used]
@@ -162,13 +161,11 @@ extern "C" fn initialize() {
 #[cfg_attr(target_os = "linux", link_section = ".ctors")]
 #[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
 #[cfg_attr(target_os = "windows", link_section = ".CRT$XCU")]
-pub static init_curl_inject_opt: extern "C" fn() = {
-	initialize
-};
+pub static init_curl_inject_opt: extern "C" fn() = initialize;
 
 #[no_mangle]
 pub extern "C" fn curl_easy_perform(handle: *mut CURL) -> CURLcode {
-	let init = match unsafe { _INIT.as_ref().unwrap() } {
+	let init = match &*INIT {
 		Err(string) => panic!("{}", string),
 		Ok(init)    => init,
 	};
@@ -184,7 +181,7 @@ pub extern "C" fn curl_easy_perform(handle: *mut CURL) -> CURLcode {
 
 #[no_mangle]
 pub extern "C" fn curl_multi_add_handle(multi_handle: *mut CURLM, handle: *mut CURL) -> CURLMcode {
-	let init = match unsafe { _INIT.as_ref().unwrap() } {
+	let init = match &*INIT {
 		Err(string) => panic!("{}", string),
 		Ok(init)    => init,
 	};
