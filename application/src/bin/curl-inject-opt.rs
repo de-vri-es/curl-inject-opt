@@ -5,7 +5,7 @@ use yansi::Paint;
 
 fn main() {
 	if !curl_inject_opt::should_color(&std::io::stderr()) {
-		Paint::disable();
+		yansi::disable();
 	}
 
 	let args       = curl_inject_opt::build_cli().get_matches();

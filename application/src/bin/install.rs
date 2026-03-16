@@ -136,7 +136,7 @@ fn install() -> Result<(), String> {
 
 fn main() {
 	if !curl_inject_opt::should_color(&std::io::stderr()) {
-		Paint::disable();
+		yansi::disable();
 	}
 
 	if let Err(error) = install() {
