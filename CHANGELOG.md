@@ -1,6 +1,7 @@
 main:
   * Replace `StructOp` with `clap`.
   * Use `LazyLock` instead of mutable static.
+  * Replace `libc::isatty` with `std::io::IsTerminal`.
 
 v0.2.3 - 2023-01-26:
   * Fix argument parsing with clap 4.

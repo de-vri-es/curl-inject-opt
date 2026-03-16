@@ -59,12 +59,12 @@ pub fn extract_curl_options(matches: &clap::ArgMatches) -> Result<Vec<SetOption>
 	options.into_iter().map(|((option, value), _)| SetOption::parse_value(*option, value.as_bytes())).collect()
 }
 
-pub fn should_color(fd: i32) -> bool {
+pub fn should_color(output: &impl std::io::IsTerminal) -> bool {
 	if std::env::var_os("CLI_COLOR").map(|x| x == "0") == Some(true) {
 		false
 	} else if std::env::var_os("CLI_COLOR_FORCE").map(|x| x != "0") == Some(true) {
 		true
 	} else {
-		unsafe { libc::isatty(fd) != 0 }
+		output.is_terminal()
 	}
 }

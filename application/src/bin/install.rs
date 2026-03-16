@@ -135,7 +135,7 @@ fn install() -> Result<(), String> {
 }
 
 fn main() {
-	if !curl_inject_opt::should_color(2) {
+	if !curl_inject_opt::should_color(&std::io::stderr()) {
 		Paint::disable();
 	}
 
