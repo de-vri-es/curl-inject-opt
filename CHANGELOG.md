@@ -1,4 +1,4 @@
-main:
+v0.2.4 - 2026-03-16:
   * Replace `StructOp` with `clap`.
   * Use `LazyLock` instead of mutable static.
   * Replace `libc::isatty` with `std::io::IsTerminal`.
